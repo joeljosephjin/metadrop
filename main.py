@@ -10,6 +10,9 @@ from data import Data
 from accumulator import Accumulator
 from layers import get_train_op
 
+import wandb
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--gpu_id', type=int, default=0,
@@ -61,6 +64,9 @@ parser.add_argument('--maml', action='store_true', default=False,
     help='whether to convert this model back to the base MAML or not')
 
 args = parser.parse_args()
+
+# incorporate wandb
+wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args))
 
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
@@ -133,12 +139,15 @@ def meta_train():
     meta_train_logger.accum(sess.run(meta_train_to_run, feed_dict=fd_mtr))
 
     if i % 50 == 0:
-      line = 'Iter %d start, learning rate %f' % (i, sess.run(lr))
+      line = 'Iter %d start, learning rate %f' % (i, sess.run(lr))    
       print('\n' + line)
       logfile.write('\n' + line + '\n')
       meta_train_logger.print_(header='meta_train', episode=i*args.metabatch,
           time=time.time()-start, logfile=logfile)
-      meta_train_logger.clear()
+        
+      wandb.log({'iter':i, 'learning_rate':sess.run(lr), 'episode':i*args.metabatch, 'cent':meta_train_logger.sums[meta_train_logger.argdict['cent']], 'acc':meta_train_logger.sums[meta_train_logger.argdict['acc']]})
+    
+    meta_train_logger.clear()
 
     if i % 1000 == 0:
       for j in range(50):
@@ -149,6 +158,9 @@ def meta_train():
 
       meta_test_logger.print_(header='meta_test ', episode=i*args.metabatch,
           time=time.time()-start, logfile=logfile)
+    
+      wandb.log({'iter':i, 'learning_rate':sess.run(lr), 'episode':i*args.metabatch, 'test_cent':meta_test_logger.sums[meta_test_logger.argdict['cent']], 'test_acc':meta_test_logger.sums[meta_test_logger.argdict['acc']]})
+    
       meta_test_logger.clear()
 
     if i % args.save_freq == 0:
@@ -185,6 +197,8 @@ def meta_test():
 
   result = 'accuracy : %f +- %f'%(acc_mean, acc_95conf)
   print(result)
+
+
   f.write(result)
   f.close()
 
