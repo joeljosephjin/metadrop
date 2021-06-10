@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 # functions
-log = lambda x: tf.log(x + 1e-20)
+log = lambda x: tf.math.log(x + 1e-20)
 softmax = tf.nn.softmax
 relu = tf.nn.relu
 softplus = tf.nn.softplus
@@ -10,16 +10,16 @@ sqrt = tf.sqrt
 exp = tf.exp
 
 # layers
-flatten = tf.layers.flatten
-batch_norm = tf.contrib.layers.batch_norm
+flatten = tf.compat.v1.layers.flatten
+# batch_norm = tf.contrib.layers.batch_norm
 
 # distribution
-normal = tf.distributions.Normal
+normal = tf.compat.v1.distributions.Normal
 
 # blocks
 def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
-  mu = tf.nn.conv2d(x, wt, [1,1,1,1], 'SAME') + bt # NHWC
-  alpha = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp # NHWC
+  mu = tf.nn.conv2d(input=x, filters=wt, strides=[1,1,1,1], padding='SAME') + bt # NHWC
+  alpha = tf.nn.conv2d(input=x, filters=wp, strides=[1,1,1,1], padding='SAME') + bp # NHWC
 
   ones = tf.ones_like(alpha)
   mult_noise = normal(alpha, ones).sample() if sample else alpha
@@ -29,8 +29,10 @@ def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
   else:
     x = mu * softplus(mult_noise)
 
-  x = batch_norm(x, activation_fn=relu, scope=bn_scope, reuse=tf.AUTO_REUSE)
-  x = tf.nn.max_pool(x, [1,2,2,1], [1,2,2,1], 'VALID')
+  # x = batch_norm(x, activation_fn=relu, scope=bn_scope, reuse=tf.compat.v1.AUTO_REUSE)
+  x = tf.keras.layers.BatchNormalization(name=bn_scope)(x)
+  x = tf.keras.layers.Activation('relu')(x)
+  x = tf.nn.max_pool2d(input=x, ksize=[1,2,2,1], strides=[1,2,2,1], padding='VALID')
   return x
 
 def dense_block(x, wt, bt, wp, bp, sample=False, maml=False):
@@ -45,12 +47,12 @@ def dense_block(x, wt, bt, wp, bp, sample=False, maml=False):
 
 # training modules
 def cross_entropy(logits, labels):
-  return tf.losses.softmax_cross_entropy(logits=logits,
+  return tf.compat.v1.losses.softmax_cross_entropy(logits=logits,
       onehot_labels=labels)
 
 def accuracy(logits, labels):
-  correct = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
-  return tf.reduce_mean(tf.cast(correct, tf.float32))
+  correct = tf.equal(tf.argmax(input=logits, axis=1), tf.argmax(input=labels, axis=1))
+  return tf.reduce_mean(input_tensor=tf.cast(correct, tf.float32))
 
 # for gradient clipping
 def get_train_op(optim, loss, global_step=None, clip=None, var_list=None):

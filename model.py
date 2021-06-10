@@ -1,5 +1,8 @@
 from layers import *
 
+tf.compat.v1.disable_eager_execution()
+
+
 class MetaDropout:
   def __init__(self, args):
     self.dataset = args.dataset
@@ -26,47 +29,47 @@ class MetaDropout:
     yshape = [self.metabatch, None, self.way]
     # episode placeholder. 'tr': training, 'te': test
     self.episodes = {
-        'xtr': tf.placeholder(tf.float32, xshape, name='xtr'),
-        'ytr': tf.placeholder(tf.float32, yshape, name='ytr'),
-        'xte': tf.placeholder(tf.float32, xshape, name='xte'),
-        'yte': tf.placeholder(tf.float32, yshape, name='yte')}
+        'xtr': tf.compat.v1.placeholder(tf.float32, xshape, name='xtr'),
+        'ytr': tf.compat.v1.placeholder(tf.float32, yshape, name='ytr'),
+        'xte': tf.compat.v1.placeholder(tf.float32, xshape, name='xte'),
+        'yte': tf.compat.v1.placeholder(tf.float32, yshape, name='yte')}
 
     # param initializers
-    self.conv_init = tf.truncated_normal_initializer(stddev=0.02)
-    self.fc_init = tf.random_normal_initializer(stddev=0.02)
-    self.zero_init = tf.zeros_initializer()
+    self.conv_init = tf.compat.v1.truncated_normal_initializer(stddev=0.02)
+    self.fc_init = tf.compat.v1.random_normal_initializer(stddev=0.02)
+    self.zero_init = tf.compat.v1.zeros_initializer()
 
   # main model param.
   def get_theta(self, reuse=None):
-    with tf.variable_scope('theta', reuse=reuse):
+    with tf.compat.v1.variable_scope('theta', reuse=reuse):
       theta = {}
       for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
-        theta['conv%d_w'%l] = tf.get_variable('conv%d_w'%l,
+        theta['conv%d_w'%l] = tf.compat.v1.get_variable('conv%d_w'%l,
             [3, 3, indim, self.n_channel], initializer=self.conv_init)
-        theta['conv%d_b'%l] = tf.get_variable('conv%d_b'%l,
+        theta['conv%d_b'%l] = tf.compat.v1.get_variable('conv%d_b'%l,
             [self.n_channel], initializer=self.zero_init)
       factor = 5*5 if self.dataset == 'mimgnet' else 1
-      theta['dense_w'] = tf.get_variable('dense_w',
+      theta['dense_w'] = tf.compat.v1.get_variable('dense_w',
           [factor*self.n_channel, self.way], initializer=self.fc_init)
-      theta['dense_b'] = tf.get_variable('dense_b',
+      theta['dense_b'] = tf.compat.v1.get_variable('dense_b',
           [self.way], initializer=self.zero_init)
       return theta
 
   # noise function param.
   def get_phi(self, reuse=None):
-    with tf.variable_scope('phi', reuse=reuse):
+    with tf.compat.v1.variable_scope('phi', reuse=reuse):
       phi = {}
       for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
-        phi['conv%d_w'%l] = tf.get_variable('conv%d_w'%l,
+        phi['conv%d_w'%l] = tf.compat.v1.get_variable('conv%d_w'%l,
             [3, 3, indim, self.n_channel], initializer=self.conv_init)
-        phi['conv%d_b'%l] = tf.get_variable('conb%d_b'%l,
+        phi['conv%d_b'%l] = tf.compat.v1.get_variable('conb%d_b'%l,
             [self.n_channel], initializer=self.zero_init)
       factor = 5*5 if self.dataset == 'mimgnet' else 1
-      single_w = tf.get_variable('dense_w', [factor*self.n_channel, 1],
+      single_w = tf.compat.v1.get_variable('dense_w', [factor*self.n_channel, 1],
           initializer=self.fc_init)
-      single_b = tf.get_variable('dense_b', [1], initializer=self.zero_init)
+      single_b = tf.compat.v1.get_variable('dense_b', [1], initializer=self.zero_init)
       phi['dense_w'] = tf.tile(single_w, [1, self.way])
       phi['dense_b'] = tf.tile(single_b, [self.way])
       return phi
@@ -104,10 +107,10 @@ class MetaDropout:
       for j in range(1 if training else self.n_test_mc_samp):
         inner_logits = self.forward(xtr, theta, phi, sample=True)
         inner_loss.append(cross_entropy(inner_logits, ytr))
-      inner_loss = tf.reduce_mean(inner_loss)
+      inner_loss = tf.reduce_mean(input_tensor=inner_loss)
 
       # compute inner-gradient
-      grads = tf.gradients(inner_loss, list(theta.values()))
+      grads = tf.gradients(ys=inner_loss, xs=list(theta.values()))
       gradients = dict(zip(theta.keys(), grads))
 
       # perform the current gradient step
@@ -136,9 +139,9 @@ class MetaDropout:
 
     # return the output
     net = {}
-    net['cent'] = tf.reduce_mean(cent)
+    net['cent'] = tf.reduce_mean(input_tensor=cent)
     net['acc'] = acc
-    net['weights'] = tf.trainable_variables()
+    net['weights'] = tf.compat.v1.trainable_variables()
     return net
 
   # last layer activation
@@ -155,10 +158,10 @@ class MetaDropout:
   def export(self):
     n_export_samp = 10
 
-    self.xtr_2way = tf.placeholder(tf.float32, [None, self.xdim*self.xdim*self.input_channel], name='xtr_2way')
-    self.xte_2way = tf.placeholder(tf.float32, [None, self.xdim*self.xdim*self.input_channel], name='xte_2way')
-    self.ytr_2way = tf.placeholder(tf.float32, [None, 2], name='ytr_2way')
-    self.yte_2way = tf.placeholder(tf.float32, [None, 2], name='yte_2way')
+    self.xtr_2way = tf.compat.v1.placeholder(tf.float32, [None, self.xdim*self.xdim*self.input_channel], name='xtr_2way')
+    self.xte_2way = tf.compat.v1.placeholder(tf.float32, [None, self.xdim*self.xdim*self.input_channel], name='xte_2way')
+    self.ytr_2way = tf.compat.v1.placeholder(tf.float32, [None, 2], name='ytr_2way')
+    self.yte_2way = tf.compat.v1.placeholder(tf.float32, [None, 2], name='yte_2way')
     xtr, ytr, xte, yte = self.xtr_2way, self.ytr_2way, self.xte_2way, self.yte_2way
 
     theta = self.get_theta(reuse=True)
@@ -188,9 +191,9 @@ class MetaDropout:
       for j in range(self.n_test_mc_samp):
         inner_logits = self.forward(xtr, theta, phi, sample=True)
         inner_loss.append(cross_entropy(inner_logits, ytr))
-      inner_loss = tf.reduce_mean(inner_loss)
+      inner_loss = tf.reduce_mean(input_tensor=inner_loss)
 
-      grads = tf.gradients(inner_loss, list(theta.values())) # compute gradients
+      grads = tf.gradients(ys=inner_loss, xs=list(theta.values())) # compute gradients
       gradients = dict(zip(theta.keys(), grads))
 
       theta = dict(zip(theta.keys(),
