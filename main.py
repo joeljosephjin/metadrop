@@ -70,8 +70,8 @@ wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args))
 
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
-if not os.path.isdir(args.savedir):
-  os.makedirs(args.savedir)
+if not os.path.isdir(wandb.run.dir):
+  os.makedirs(wandb.run.dir)
 
 # for generating episode
 data = Data(args)
@@ -112,7 +112,7 @@ def meta_train():
       global_step=global_step, var_list=var_list)
 
   saver = tf.train.Saver(tf.trainable_variables())
-  logfile = open(os.path.join(args.savedir, 'meta_train.log'), 'w')
+  logfile = open(os.path.join(wandb.run.dir, 'meta_train.log'), 'w')
 
   argdict = vars(args)
   print(argdict)
@@ -164,7 +164,7 @@ def meta_train():
       meta_test_logger.clear()
 
     if i % args.save_freq == 0:
-      saver.save(sess, os.path.join(args.savedir, 'model'))
+      saver.save(sess, os.path.join(wandb.run.dir, 'model'))
 
   logfile.close()
 
@@ -174,9 +174,9 @@ def meta_test():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(args.savedir, 'model'))
+  saver.restore(sess, os.path.join(wandb.run.dir, 'model'))
 
-  f = open(os.path.join(args.savedir, 'meta_test.log'), 'w')
+  f = open(os.path.join(wandb.run.dir, 'meta_test.log'), 'w')
 
   start = time.time()
   acc = []
@@ -209,7 +209,7 @@ def export():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(args.savedir, 'model'))
+  saver.restore(sess, os.path.join(wandb.run.dir, 'model'))
 
   outs = []
   args.way = 2
@@ -227,7 +227,7 @@ def export():
     outs.append(out)
 
   import pickle
-  with open(os.path.join(args.savedir, 'export.pkl'), 'wb') as f:
+  with open(os.path.join(wandb.run.dir, 'export.pkl'), 'wb') as f:
       pickle.dump(outs, f)
 
 if __name__=='__main__':
