@@ -174,7 +174,7 @@ def meta_test():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(os.getcwd(), 'model'))
+  saver.restore(sess, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model'))
   f = open(os.path.join(wandb.run.dir, 'meta_test.log'), 'w')
 
   start = time.time()
@@ -208,7 +208,7 @@ def export():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(os.getcwd(), 'model'))
+  saver.restore(sess, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model'))
 
   outs = []
   args.way = 2
@@ -226,7 +226,7 @@ def export():
     outs.append(out)
 
   import pickle
-  with open(os.path.join(wandb.run.dir, 'export.pkl'), 'wb') as f:
+  with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'export.pkl'), 'wb') as f:
       pickle.dump(outs, f)
 
 if __name__=='__main__':
