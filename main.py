@@ -174,8 +174,7 @@ def meta_test():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(wandb.run.dir, 'model'))
-
+  saver.restore(sess, os.path.join(os.getcwd(), 'model'))
   f = open(os.path.join(wandb.run.dir, 'meta_test.log'), 'w')
 
   start = time.time()
@@ -209,7 +208,7 @@ def export():
   config.gpu_options.allow_growth = True
   sess = tf.Session(config=config)
   saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(wandb.run.dir, 'model'))
+  saver.restore(sess, os.path.join(os.getcwd(), 'model'))
 
   outs = []
   args.way = 2
