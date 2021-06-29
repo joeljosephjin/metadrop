@@ -1,5 +1,9 @@
 from __future__ import print_function
 import tensorflow as tf
+
+import logging
+tf.get_logger().setLevel(logging.ERROR)
+
 import argparse
 import numpy as np
 import time
@@ -8,9 +12,11 @@ import os
 from model import MetaDropout
 from data import Data
 from accumulator import Accumulator
-from layers import get_train_op
+from layers import gradient_clipper
 
 import wandb
+
+tf.set_random_seed(0)
 
 
 parser = argparse.ArgumentParser()
@@ -108,7 +114,7 @@ def meta_train():
   else:
     var_list = net_weights
 
-  meta_train_op = get_train_op(optim, net_cent, clip=[-3., 3.],
+  meta_train_op = gradient_clipper(optim, net_cent, clip=[-3., 3.],
       global_step=global_step, var_list=var_list)
 
   saver = tf.train.Saver(tf.trainable_variables())
@@ -127,6 +133,7 @@ def meta_train():
 
   meta_train_logger = Accumulator('cent', 'acc')
   meta_train_to_run = [meta_train_op, net_cent, net_acc_mean]
+  # print('sdfsd', meta_train_to_run)
 
   meta_test_logger = Accumulator('cent', 'acc')
   meta_test_to_run = [tnet_cent, tnet_acc_mean]
