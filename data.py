@@ -1,4 +1,5 @@
 import numpy as np
+# np.random.seed(0)
 
 class Data:
   def __init__(self, args):

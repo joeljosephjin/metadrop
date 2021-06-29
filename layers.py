@@ -1,5 +1,10 @@
 import tensorflow as tf
+
+# tf.set_random_seed(0)
+# tf.random.set_random_seed(0)
+
 import numpy as np
+# np.random.seed(0)
 
 # functions
 log = lambda x: tf.log(x + 1e-20)
@@ -53,7 +58,7 @@ def accuracy(logits, labels):
   return tf.reduce_mean(tf.cast(correct, tf.float32))
 
 # for gradient clipping
-def get_train_op(optim, loss, global_step=None, clip=None, var_list=None):
+def gradient_clipper(optim, loss, global_step=None, clip=None, var_list=None):
   grad_and_vars = optim.compute_gradients(loss, var_list=var_list)
   if clip is not None:
       grad_and_vars = [((None if grad is None \

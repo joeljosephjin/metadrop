@@ -1,11 +1,17 @@
 from __future__ import print_function
 import tensorflow as tf
 
+# tf.set_random_seed(0)
+# tf.random.set_random_seed(0)
+# tf.random.set_seed(0)
+
 import logging
 tf.get_logger().setLevel(logging.ERROR)
 
 import argparse
 import numpy as np
+np.random.seed(0)
+
 import time
 import os
 
@@ -15,8 +21,6 @@ from accumulator import Accumulator
 from layers import gradient_clipper
 
 import wandb
-
-tf.set_random_seed(0)
 
 
 parser = argparse.ArgumentParser()
