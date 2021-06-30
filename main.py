@@ -42,9 +42,7 @@ net_weights = net['weights']
 # meta-training
 global_step = tf.train.get_or_create_global_step()
 
-lr = tf.convert_to_tensor(args.meta_lr)
-
-optim = tf.train.AdamOptimizer(lr)
+optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
 
 if args.maml:
   var_list = [v for v in net_weights if 'phi' not in v.name]
@@ -59,15 +57,13 @@ sess = tf.Session(config=config) # define session
 sess.run(tf.global_variables_initializer()) # init variables
 
 meta_train_logger = Accumulator('cent', 'acc') # init logger
-meta_train_to_run = [meta_train_op, net_cent, net_acc_mean]
 
+# start training
 for i in range(args.n_train_iters+1):
   episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
 
-  logs = sess.run(meta_train_to_run, feed_dict=dict(zip(placeholders, episode)))
-  print(logs)
-  meta_train_logger.accum([None, logs[1], logs[2]])
+  _, cent, acc = sess.run([meta_train_op, net_cent, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
+  meta_train_logger.accum([cent, acc])
 
   if i % 50 == 0: meta_train_logger.print_(episode=i*args.metabatch, iteration=i)
-      
   meta_train_logger.clear()
