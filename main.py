@@ -14,11 +14,9 @@ import os
 
 from model import MetaDropout
 from data import Data
-from accumulator import Accumulator
 from layers import gradient_clipper
 
 from parsers import parser
-
 
 args = parser.parse_args()
 
@@ -49,21 +47,17 @@ if args.maml:
 else:
   var_list = net_weights
 
-meta_train_op = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list) # always returns None
+meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list) # always returns None
 
 config = tf.ConfigProto() # config gpu
 config.gpu_options.allow_growth = True # config gpu
 sess = tf.Session(config=config) # define session
 sess.run(tf.global_variables_initializer()) # init variables
 
-meta_train_logger = Accumulator('cent', 'acc') # init logger
-
 # start training
 for i in range(args.n_train_iters+1):
   episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
 
-  _, cent, acc = sess.run([meta_train_op, net_cent, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
-  meta_train_logger.accum([cent, acc])
+  _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
 
-  if i % 50 == 0: meta_train_logger.print_(episode=i*args.metabatch, iteration=i)
-  meta_train_logger.clear()
+  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',cent,'acc:',acc)
