@@ -58,7 +58,7 @@ def accuracy(logits, labels):
   return tf.reduce_mean(tf.cast(correct, tf.float32))
 
 # for gradient clipping
-def gradient_clipper(optim, loss, global_step=None, clip=None, var_list=None):
+def gradient_clipper(optim, loss, global_step=None, clip=[-3., 3.], var_list=None):
   grad_and_vars = optim.compute_gradients(loss, var_list=var_list)
   if clip is not None:
       grad_and_vars = [((None if grad is None \

@@ -28,10 +28,12 @@ class Accumulator():
 
     def print_(self, header=None, episode=None, it=None, time=None,
             logfile=None, do_not_print=[], as_int=[],
-            avg=True):
+            avg=True, iteration=None):
         line = '' if header is None else header + ': '
         if episode is not None:
             line += ('episode %d, ' % episode)
+        if iteration is not None:
+            line += ('iteration %d, ' % iteration)
         if it is not None:
             line += ('iter %d, ' % it)
         if time is not None:
