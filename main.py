@@ -37,6 +37,8 @@ if not os.path.isdir(wandb.run.dir):
 # for generating episode
 data = Data(args)
 
+# print(data)
+
 # model object
 model = MetaDropout(args)
 epi = model.episodes
@@ -57,146 +59,65 @@ tnet_acc_mean = tf.reduce_mean(tnet['acc'])
 tnet_weights = tnet['weights']
 
 # meta-training
-def meta_train():
-  global_step = tf.train.get_or_create_global_step()
+global_step = tf.train.get_or_create_global_step()
+# print(global_step)
 
-  lr = tf.convert_to_tensor(args.meta_lr)
+lr = tf.convert_to_tensor(args.meta_lr)
 
-  optim = tf.train.AdamOptimizer(lr)
+optim = tf.train.AdamOptimizer(lr)
 
-  if args.maml:
-    var_list = [v for v in net_weights if 'phi' not in v.name]
-  else:
-    var_list = net_weights
+if args.maml:
+  var_list = [v for v in net_weights if 'phi' not in v.name]
+else:
+  var_list = net_weights
 
-  meta_train_op = gradient_clipper(optim, net_cent, clip=[-3., 3.],
-      global_step=global_step, var_list=var_list)
+meta_train_op = gradient_clipper(optim, net_cent, clip=[-3., 3.],
+    global_step=global_step, var_list=var_list)
 
-  saver = tf.train.Saver(tf.trainable_variables())
-  logfile = open(os.path.join(wandb.run.dir, 'meta_train.log'), 'w')
+# print('meta train op',meta_train_op)
 
-  argdict = vars(args)
-  print(argdict)
-  for k, v in argdict.items():
-      logfile.write(k + ': ' + str(v) + '\n')
-  logfile.write('\n')
+saver = tf.train.Saver(tf.trainable_variables())
+logfile = open(os.path.join(wandb.run.dir, 'meta_train.log'), 'w')
 
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config)
-  sess.run(tf.global_variables_initializer())
+argdict = vars(args)
+print(argdict)
+for k, v in argdict.items():
+    logfile.write(k + ': ' + str(v) + '\n')
+logfile.write('\n')
 
-  meta_train_logger = Accumulator('cent', 'acc')
-  meta_train_to_run = [meta_train_op, net_cent, net_acc_mean]
-  # print('sdfsd', meta_train_to_run)
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
+sess.run(tf.global_variables_initializer())
 
-  meta_test_logger = Accumulator('cent', 'acc')
-  meta_test_to_run = [tnet_cent, tnet_acc_mean]
+meta_train_logger = Accumulator('cent', 'acc')
+meta_train_to_run = [meta_train_op, net_cent, net_acc_mean]
+# print('sdfsd', meta_train_to_run)
 
-  start = time.time()
-  for i in range(args.n_train_iters+1):
-    episode = data.generate_episode(args, meta_training=True,
-        n_episodes=args.metabatch)
-    fd_mtr = dict(zip(placeholders, episode))
-    meta_train_logger.accum(sess.run(meta_train_to_run, feed_dict=fd_mtr))
+meta_test_logger = Accumulator('cent', 'acc')
+# print(meta_test_logger)
+meta_test_to_run = [tnet_cent, tnet_acc_mean]
+# print(meta_test_to_run)
 
-    if i % 50 == 0:
-      line = 'Iter %d start, learning rate %f' % (i, sess.run(lr))    
-      print('\n' + line)
-      logfile.write('\n' + line + '\n')
-      meta_train_logger.print_(header='meta_train', episode=i*args.metabatch,
-          time=time.time()-start, logfile=logfile)
-        
-      wandb.log({'iter':i, 'learning_rate':sess.run(lr), 'episode':i*args.metabatch, 'cent':meta_train_logger.sums[meta_train_logger.argdict['cent']], 'acc':meta_train_logger.sums[meta_train_logger.argdict['acc']]})
-    
-    meta_train_logger.clear()
+start = time.time()
+for i in range(args.n_train_iters+1):
+  episode = data.generate_episode(args, meta_training=True,
+      n_episodes=args.metabatch)
 
-    if i % 1000 == 0:
-      for j in range(50):
-        episode = data.generate_episode(args, meta_training=False,
-            n_episodes=args.metabatch)
-        fd_mte= dict(zip(placeholders, episode))
-        meta_test_logger.accum(sess.run(meta_test_to_run, feed_dict=fd_mte))
+  # print('global_step', tf.train.global_step(sess, global_step))
+  # itemindex = np.where(episode[0] == 1)
+  # print('episode:', itemindex[0][0], itemindex[1][0], itemindex[2][0])
+  fd_mtr = dict(zip(placeholders, episode))
+  # print('fd_mtr:', fd_mtr)
+  meta_train_logger.accum(sess.run(meta_train_to_run, feed_dict=fd_mtr))
 
-      meta_test_logger.print_(header='meta_test ', episode=i*args.metabatch,
-          time=time.time()-start, logfile=logfile)
-    
-      wandb.log({'iter':i, 'learning_rate':sess.run(lr), 'episode':i*args.metabatch, 'test_cent':meta_test_logger.sums[meta_test_logger.argdict['cent']], 'test_acc':meta_test_logger.sums[meta_test_logger.argdict['acc']]})
-    
-      meta_test_logger.clear()
+  if i % 50 == 0:
+    line = 'Iter %d start, learning rate %f' % (i, sess.run(lr))    
+    print('\n' + line)
+    meta_train_logger.print_(header='meta_train', episode=i*args.metabatch,
+        time=time.time()-start, logfile=logfile)
+      
+  meta_train_logger.clear()
 
-    if i % args.save_freq == 0:
-      saver.save(sess, os.path.join(wandb.run.dir, 'model'))
+logfile.close()
 
-  logfile.close()
-
-# meta-testing
-def meta_test():
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config)
-  saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model'))
-  f = open(os.path.join(wandb.run.dir, 'meta_test.log'), 'w')
-
-  start = time.time()
-  acc = []
-  for j in range(args.n_test_iters//args.metabatch):
-    if j % 10 == 0:
-      print('(%.3f secs) meta test iter %d start'\
-          % (time.time()-start,j*args.metabatch))
-    epi = model.episodes
-    episode = data.generate_episode(args, meta_training=False,
-        n_episodes=args.metabatch)
-    fd_mte= dict(zip(placeholders, episode))
-    acc.append(sess.run(tnet_acc, feed_dict=fd_mte))
-
-  acc = 100.*np.concatenate(acc, axis=0)
-
-  acc_mean = np.mean(acc)
-  acc_95conf = 1.96*np.std(acc)/float(np.sqrt(args.n_test_iters))
-
-  result = 'accuracy : %f +- %f'%(acc_mean, acc_95conf)
-  print(result)
-
-
-  f.write(result)
-  f.close()
-
-def export():
-  export_net = model.export()
-
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config)
-  saver = tf.train.Saver(tnet_weights)
-  saver.restore(sess, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model'))
-
-  outs = []
-  args.way = 2
-  for c in range(10):
-    xtr, ytr, xte, yte = data.generate_episode(args, meta_training=False, n_episodes=1, classes=[c, c+5])
-    fd = {
-      model.xtr_2way: xtr[0],
-      model.ytr_2way: ytr[0],
-      model.xte_2way: xte[0],
-      model.yte_2way: yte[0]
-    }
-    out = sess.run(export_net, feed_dict=fd)
-    out['ytr'] = np.argmax(ytr[0], axis=1)
-    out['yte'] = np.argmax(yte[0], axis=1)
-    outs.append(out)
-
-  import pickle
-  with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'export.pkl'), 'wb') as f:
-      pickle.dump(outs, f)
-
-if __name__=='__main__':
-  if args.mode == 'meta_train':
-    meta_train()
-  elif args.mode == 'meta_test':
-    meta_test()
-  elif args.mode == 'export':
-    export()
-  else:
-    raise ValueError('Invalid mode %s' % args.mode)
