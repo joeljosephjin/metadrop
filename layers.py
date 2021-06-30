@@ -50,8 +50,7 @@ def dense_block(x, wt, bt, wp, bp, sample=False, maml=False):
 
 # training modules
 def cross_entropy(logits, labels):
-  return tf.losses.softmax_cross_entropy(logits=logits,
-      onehot_labels=labels)
+  return tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
 
 def accuracy(logits, labels):
   correct = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
@@ -61,8 +60,7 @@ def accuracy(logits, labels):
 def gradient_clipper(optim, loss, global_step=None, clip=[-3., 3.], var_list=None):
   grad_and_vars = optim.compute_gradients(loss, var_list=var_list)
   if clip is not None:
-      grad_and_vars = [((None if grad is None \
-              else tf.clip_by_value(grad, clip[0], clip[1])), var) \
+      grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, clip[0], clip[1])), var) \
               for grad, var in grad_and_vars]
   train_op = optim.apply_gradients(grad_and_vars, global_step=global_step)
   return train_op
