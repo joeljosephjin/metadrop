@@ -28,7 +28,7 @@ data = Data(args)
 # model object
 model = MetaDropout(args)
 epi = model.episodes
-placeholders = [epi['xtr'], epi['ytr'], epi['xte'], epi['yte']]
+data_placeholders = [epi['xtr'], epi['ytr'], epi['xte'], epi['yte']]
 
 # meta-training pipeline
 net = model.get_loss_multiple(True)
@@ -56,8 +56,8 @@ sess.run(tf.global_variables_initializer()) # init variables
 
 # start training
 for i in range(args.n_train_iters+1):
-  episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
+  data_episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
 
-  _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
+  _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(data_placeholders, data_episode)))
 
   if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',cent,'acc:',acc)
