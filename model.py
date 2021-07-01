@@ -25,11 +25,11 @@ class MetaDropout:
     xshape = [self.metabatch, None, self.xdim*self.xdim*self.input_channel]
     yshape = [self.metabatch, None, self.way]
     # episode placeholder. 'tr': training, 'te': test
-    self.episodes = {
-        'xtr': tf.placeholder(tf.float32, xshape, name='xtr'),
-        'ytr': tf.placeholder(tf.float32, yshape, name='ytr'),
-        'xte': tf.placeholder(tf.float32, xshape, name='xte'),
-        'yte': tf.placeholder(tf.float32, yshape, name='yte')}
+    # self.episodes = {
+    #     'xtr': tf.placeholder(tf.float32, xshape, name='xtr'),
+    #     'ytr': tf.placeholder(tf.float32, yshape, name='ytr'),
+    #     'xte': tf.placeholder(tf.float32, xshape, name='xte'),
+    #     'yte': tf.placeholder(tf.float32, yshape, name='yte')}
 
     # param initializers
     self.conv_init = tf.truncated_normal_initializer(stddev=0.02)
@@ -101,33 +101,38 @@ class MetaDropout:
       # evaluate the expected loss over input-dependent noise distribution with MC approx.
       # if meta-training then we sample once for efficiency.
       # if meta-testing then we sample as much as possible (e.g. 30) for accuracy.
-      for j in range(1 if training else self.n_test_mc_samp):
-        inner_logits = self.forward(xtr, theta, phi, sample=True)
-        inner_loss.append(cross_entropy(inner_logits, ytr))
-      inner_loss = tf.reduce_mean(inner_loss)
+      with tf.GradientTape() as g:
+        g.watch(list(theta.values()))
+        for j in range(1 if training else self.n_test_mc_samp):
+          inner_logits = self.forward(xtr, theta, phi, sample=True)
+          inner_loss.append(cross_entropy(inner_logits, ytr))
+        inner_loss = tf.reduce_mean(inner_loss)
 
       # compute inner-gradient
-      grads = tf.gradients(inner_loss, list(theta.values()))
+      grads = g.gradient(inner_loss, list(theta.values()))
       gradients = dict(zip(theta.keys(), grads))
 
       # perform the current gradient step
       theta = dict(zip(theta.keys(), [theta[key] - self.inner_lr * gradients[key] for key in theta.keys()]))
 
-    logits = self.forward(xte, theta, phi, sample=False)
-    cent = cross_entropy(logits, yte)
+    with tf.GradientTape() as gg:
+      logits = self.forward(xte, theta, phi, sample=False)
+      loss = cross_entropy(logits, yte)
     acc = accuracy(logits, yte)
-    return cent, acc
+    return loss, acc
 
   # compute the test loss over multiple tasks
-  def get_loss_multiple(self, training):
-    xtr, ytr = self.episodes['xtr'], self.episodes['ytr']
-    xte, yte = self.episodes['xte'], self.episodes['yte']
+  def get_loss_multiple(self, training, data_episode):
+    # xtr, ytr = self.episodes['xtr'], self.episodes['ytr']
+    # xte, yte = self.episodes['xte'], self.episodes['yte']
+
+    xtr, ytr, xte, yte = data_episode
 
     get_single_train = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
     get_single_test = lambda inputs: self.get_loss_single(inputs, False, reuse=True)
     get_single = get_single_train if training else get_single_test
 
-    cent, acc \
+    cent, acc, gg \
         = tf.map_fn(get_single,
             elems=(xtr, ytr, xte, yte),
             dtype=(tf.float32, tf.float32),
@@ -138,6 +143,7 @@ class MetaDropout:
     net['cent'] = tf.reduce_mean(cent)
     net['acc'] = acc
     net['weights'] = tf.trainable_variables()
+    net['grad_tapes'] = gg
     return net
 
   # last layer activation
