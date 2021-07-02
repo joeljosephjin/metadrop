@@ -19,7 +19,7 @@ import os
 
 from model import MetaDropout
 from data import Data
-from layers import gradient_clipper
+# from layers import gradient_clipper
 
 from parsers import parser
 
@@ -32,13 +32,23 @@ data = Data(args)
 
 # model object
 model = MetaDropout(args)
-# epi = model.episodes
-# data_placeholders = [epi['xtr'], epi['ytr'], epi['xte'], epi['yte']]
 
+# for gradient clipping
+def gradient_clipper(optim, loss, global_step=None, clip=[-3., 3.], var_list=None, net_grads=None):
+  # print(net_gg)
+  print(var_list,'here comes the loss' ,loss)
+  grads = []
+  for ggi in net_gg:
+    grads.append(ggi.gradient(loss, var_list))
 
-
-# sess = tf.Session(config=config) # define session
-# sess.run(tf.global_variables_initializer()) # init variables
+  # grad_and_vars = optim.compute_gradients(loss, var_list=var_list)
+  print(grads)
+  grad_and_vars = []
+  if clip is not None:
+      grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, clip[0], clip[1])), var) for grad, var in zip(grads, var_list)]
+  print(grad_and_vars)
+  train_op = optim.apply_gradients(grad_and_vars, global_step=global_step)
+  return train_op
 
 # start training
 for i in range(args.n_train_iters+1):
@@ -50,7 +60,7 @@ for i in range(args.n_train_iters+1):
   net_acc = net['acc']
   net_acc_mean = tf.reduce_mean(net['acc'])
   net_weights = net['weights']
-  net_gg = net['grad_tapes']
+  net_grads = net['grads']
 
   # print('net gg:', net_gg)
 
@@ -64,9 +74,9 @@ for i in range(args.n_train_iters+1):
   else:
     var_list = net_weights
 
-  print('var list here', var_list)
+  # print('var list here', var_list)
 
-  meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list, net_gg=net_gg)
+  meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list, net_grads=net_grads)
 
   # _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(data_placeholders, data_episode)))
 

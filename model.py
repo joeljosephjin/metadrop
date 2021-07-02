@@ -122,8 +122,8 @@ class MetaDropout:
       logits = self.forward(xte, theta, phi, sample=False)
       loss = cross_entropy(logits, yte)
     acc = accuracy(logits, yte)
-    print(gg)
-    return loss, acc, gg
+    grads = gg.gradient(loss, [list(theta.values()), list(phi.values())])
+    return loss, acc, grads
 
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, training, data_episode):
@@ -134,9 +134,9 @@ class MetaDropout:
     # print(data_episode[0][0].shape)
     # data_episode = [tf.convert_to_tensor(x) for x in data_episode]
 
-    get_single_train = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
-    get_single_test = lambda inputs: self.get_loss_single(inputs, False, reuse=True)
-    get_single = get_single_train if training else get_single_test
+    # get_single_train = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
+    # get_single_test = lambda inputs: self.get_loss_single(inputs, False, reuse=True)
+    # get_single = get_single_train if training else get_single_test
 
     # cent, acc, gg \
     #     = tf.map_fn(get_single,
@@ -144,19 +144,25 @@ class MetaDropout:
     #         dtype=(tf.float32, tf.float32),
     #         parallel_iterations=self.metabatch)
 
-    cent, acc, gg = [],[],[]
+    cent, acc, grads_list = [],[],[]
     for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-      centi, acci, ggi = self.get_loss_single(inputs=[xtr[0], ytr[0], xte[0], yte[0]], training=True, reuse=False)
+      centi, acci, gradsi = self.get_loss_single(inputs=[xtr[0], ytr[0], xte[0], yte[0]], training=True, reuse=False)
       cent.append(centi)
       acc.append(acci)
-      gg.append(ggi)
+      grads_list.append(gradsi)
 
     # return the output
+    theta_grads = [grads_list[i][0] for i in range(4)]
+    theta_grads_sum = [i for i in zip(*theta_grads)]
+
+    phi_grads = [grads_list[i][1] for i in range(4)]
+    phi_grads_sum = [i for i in zip(*theta_grads)]
+
     net = {}
     net['cent'] = tf.reduce_mean(cent)
     net['acc'] = acc
     net['weights'] = tf.trainable_variables()
-    net['grad_tapes'] = gg
+    net['grads'] = [theta_grads_sum, phi_grads_sum]
     return net
 
   # last layer activation
