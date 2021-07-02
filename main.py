@@ -57,4 +57,4 @@ for i in range(args.n_train_iters+1):
   _ = optim.apply_gradients(grad_and_vars1)
   # print('after (2): weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
 
-  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',net_cent,'acc:',net_acc_mean)
+  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',net_cent.numpy(),'acc:',net_acc_mean.numpy())
