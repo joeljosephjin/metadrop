@@ -1,4 +1,6 @@
 from layers import *
+from copy import deepcopy
+
 
 class MetaDropout:
   def __init__(self, args):
@@ -24,12 +26,6 @@ class MetaDropout:
 
     xshape = [self.metabatch, None, self.xdim*self.xdim*self.input_channel]
     yshape = [self.metabatch, None, self.way]
-    # episode placeholder. 'tr': training, 'te': test
-    # self.episodes = {
-    #     'xtr': tf.placeholder(tf.float32, xshape, name='xtr'),
-    #     'ytr': tf.placeholder(tf.float32, yshape, name='ytr'),
-    #     'xte': tf.placeholder(tf.float32, xshape, name='xte'),
-    #     'yte': tf.placeholder(tf.float32, yshape, name='yte')}
 
     # param initializers
     self.conv_init = tf.truncated_normal_initializer(stddev=0.02)
@@ -92,8 +88,15 @@ class MetaDropout:
   def get_loss_single(self, inputs, training, reuse=None):
     # print(inputs)
     xtr, ytr, xte, yte = inputs
+    theta = self.get_theta(reuse=True)
+    print('in get_loss_single (0): weights:', list(theta.values())[0][0][0][0][0].numpy())
     theta = self.get_theta(reuse=reuse)
+    print('in get_loss_single: weights:', list(theta.values())[0][0][0][0][0].numpy())
+
+    theta_clone = deepcopy(theta)
+    # print('sadfs', theta_clone)
     phi = self.get_phi(reuse=reuse)
+    phi_clone = deepcopy(phi)
 
     # perform a few (e.g. 5) inner-gradient steps
     for i in range(self.n_steps):
@@ -103,27 +106,30 @@ class MetaDropout:
       # if meta-training then we sample once for efficiency.
       # if meta-testing then we sample as much as possible (e.g. 30) for accuracy.
       with tf.GradientTape() as g:
-        g.watch(list(theta.values()))
+        g.watch(list(theta_clone.values()))
         for j in range(1 if training else self.n_test_mc_samp):
-          inner_logits = self.forward(xtr, theta, phi, sample=True)
+          inner_logits = self.forward(xtr, theta_clone, phi_clone, sample=True)
           inner_loss.append(cross_entropy(inner_logits, ytr))
         inner_loss = tf.reduce_mean(inner_loss)
 
       # compute inner-gradient
-      grads = g.gradient(inner_loss, list(theta.values()))
-      gradients = dict(zip(theta.keys(), grads))
+      grads = g.gradient(inner_loss, list(theta_clone.values()))
+      # print(grads)
+      gradients = dict(zip(theta_clone.keys(), grads))
 
       # perform the current gradient step
-      theta = dict(zip(theta.keys(), [theta[key] - self.inner_lr * gradients[key] for key in theta.keys()]))
+      theta_clone = dict(zip(theta_clone.keys(), [theta_clone[key] - self.inner_lr * gradients[key] for key in theta_clone.keys()]))
 
     with tf.GradientTape() as gg:
-      gg.watch(theta)
-      gg.watch(phi)
-      logits = self.forward(xte, theta, phi, sample=False)
+      gg.watch(theta_clone)
+      gg.watch(phi_clone)
+      logits = self.forward(xte, theta_clone, phi_clone, sample=False)
       loss = cross_entropy(logits, yte)
     acc = accuracy(logits, yte)
-    grads = gg.gradient(loss, [list(theta.values()), list(phi.values())])
+    grads = gg.gradient(loss, [list(theta_clone.values()), list(phi_clone.values())])
     # print('here theta:', len(list(theta.values())))
+    print('in get_loss_single (2): weights:', list(theta.values())[0][0][0][0][0].numpy())
+
     return loss, acc, grads
 
   # compute the test loss over multiple tasks
@@ -147,8 +153,8 @@ class MetaDropout:
 
     cent, acc, grads_list = [],[],[]
     for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-      centi, acci, gradsi = self.get_loss_single(inputs=[xtr[0], ytr[0], xte[0], yte[0]], training=True, reuse=False)
-      # print(gradsi[0][0].shape)
+      print('thru the for loop a time')
+      centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=False)
       cent.append(centi)
       acc.append(acci)
       grads_list.append(gradsi)
