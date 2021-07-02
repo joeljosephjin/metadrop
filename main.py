@@ -35,19 +35,7 @@ model = MetaDropout(args)
 
 # for gradient clipping
 def gradient_clipper(optim, loss, global_step=None, clip=[-3., 3.], var_list=None, net_grads=None):
-  # print(net_gg)
-  print(var_list,'here comes the loss' ,loss)
-  grads = []
-  for ggi in net_gg:
-    grads.append(ggi.gradient(loss, var_list))
 
-  # grad_and_vars = optim.compute_gradients(loss, var_list=var_list)
-  print(grads)
-  grad_and_vars = []
-  if clip is not None:
-      grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, clip[0], clip[1])), var) for grad, var in zip(grads, var_list)]
-  print(grad_and_vars)
-  train_op = optim.apply_gradients(grad_and_vars, global_step=global_step)
   return train_op
 
 # start training
@@ -69,15 +57,11 @@ for i in range(args.n_train_iters+1):
 
   optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
 
-  if args.maml:
-    var_list = [v for v in net_weights if 'phi' not in v.name]
-  else:
-    var_list = net_weights
+  print(len(net_grads[0][0]))
+  print(len(net_weights[0][0]))
 
-  # print('var list here', var_list)
+  grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads, net_weights)]
 
-  meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list, net_grads=net_grads)
-
-  # _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(data_placeholders, data_episode)))
+  _ = optim.apply_gradients(grad_and_vars, global_step=global_step)
 
   if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',cent,'acc:',acc)

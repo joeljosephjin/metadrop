@@ -161,7 +161,7 @@ class MetaDropout:
     net = {}
     net['cent'] = tf.reduce_mean(cent)
     net['acc'] = acc
-    net['weights'] = tf.trainable_variables()
+    net['weights'] = [list(self.get_theta(reuse=False).values()), list(self.get_phi().values())]
     net['grads'] = [theta_grads_sum, phi_grads_sum]
     return net
 
