@@ -32,6 +32,9 @@ class MetaDropout:
     self.fc_init = tf.random_normal_initializer(stddev=0.02)
     self.zero_init = tf.zeros_initializer()
 
+    self.theta = self.get_theta()
+    self.phi = self.get_phi()
+
   # main model param.
   def get_theta(self, reuse=None):
     with tf.variable_scope('theta', reuse=reuse):
@@ -88,14 +91,14 @@ class MetaDropout:
   def get_loss_single(self, inputs, training, reuse=None):
     # print(inputs)
     xtr, ytr, xte, yte = inputs
-    theta = self.get_theta(reuse=True)
-    print('in get_loss_single (0): weights:', list(theta.values())[0][0][0][0][0].numpy())
-    theta = self.get_theta(reuse=reuse)
-    print('in get_loss_single: weights:', list(theta.values())[0][0][0][0][0].numpy())
+    theta = self.theta
+    # print('in get_loss_single (0): weights:', list(theta.values())[0][0][0][0][0].numpy())
+    theta = self.theta
+    # print('in get_loss_single: weights:', list(theta.values())[0][0][0][0][0].numpy())
 
     theta_clone = deepcopy(theta)
     # print('sadfs', theta_clone)
-    phi = self.get_phi(reuse=reuse)
+    phi = self.phi
     phi_clone = deepcopy(phi)
 
     # perform a few (e.g. 5) inner-gradient steps
@@ -128,7 +131,7 @@ class MetaDropout:
     acc = accuracy(logits, yte)
     grads = gg.gradient(loss, [list(theta_clone.values()), list(phi_clone.values())])
     # print('here theta:', len(list(theta.values())))
-    print('in get_loss_single (2): weights:', list(theta.values())[0][0][0][0][0].numpy())
+    # print('in get_loss_single (2): weights:', list(theta.values())[0][0][0][0][0].numpy())
 
     return loss, acc, grads
 
@@ -153,8 +156,8 @@ class MetaDropout:
 
     cent, acc, grads_list = [],[],[]
     for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-      print('thru the for loop a time')
-      centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=False)
+      # print('thru the for loop a time')
+      centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=True)
       cent.append(centi)
       acc.append(acci)
       grads_list.append(gradsi)
@@ -173,7 +176,7 @@ class MetaDropout:
     net = {}
     net['cent'] = tf.reduce_mean(cent)
     net['acc'] = acc
-    net['weights'] = [list(self.get_theta(reuse=False).values()), list(self.get_phi().values())]
+    net['weights'] = [list(self.theta.values()), list(self.phi.values())]
     net['grads'] = [theta_grads_sum, phi_grads_sum]
     return net
 

@@ -51,10 +51,10 @@ for i in range(args.n_train_iters+1):
   grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[0], net_weights[0])]
   grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[1], net_weights[1])]
 
-  print('before: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+  # print('before: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
   _ = optim.apply_gradients(grad_and_vars0)
-  print('after: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+  # print('after: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
   _ = optim.apply_gradients(grad_and_vars1)
-  print('after (2): weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+  # print('after (2): weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
 
   if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',net_cent,'acc:',net_acc_mean)
