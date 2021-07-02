@@ -57,8 +57,8 @@ for i in range(args.n_train_iters+1):
 
   optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
 
-  print(len(net_grads[0][0]))
-  print(len(net_weights[0][0]))
+  # print(len(net_grads[0][0]))
+  # print(net_weights[0][0])
 
   grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads, net_weights)]
 

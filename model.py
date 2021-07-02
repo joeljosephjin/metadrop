@@ -123,6 +123,7 @@ class MetaDropout:
       loss = cross_entropy(logits, yte)
     acc = accuracy(logits, yte)
     grads = gg.gradient(loss, [list(theta.values()), list(phi.values())])
+    # print('here theta:', len(list(theta.values())))
     return loss, acc, grads
 
   # compute the test loss over multiple tasks
@@ -147,6 +148,7 @@ class MetaDropout:
     cent, acc, grads_list = [],[],[]
     for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
       centi, acci, gradsi = self.get_loss_single(inputs=[xtr[0], ytr[0], xte[0], yte[0]], training=True, reuse=False)
+      # print(gradsi[0][0].shape)
       cent.append(centi)
       acc.append(acci)
       grads_list.append(gradsi)
@@ -154,6 +156,9 @@ class MetaDropout:
     # return the output
     theta_grads = [grads_list[i][0] for i in range(4)]
     theta_grads_sum = [i for i in zip(*theta_grads)]
+
+    print('here:', len(theta_grads_sum))
+    print('here:', theta_grads_sum[0])
 
     phi_grads = [grads_list[i][1] for i in range(4)]
     phi_grads_sum = [i for i in zip(*theta_grads)]
