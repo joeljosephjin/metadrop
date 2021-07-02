@@ -90,6 +90,7 @@ class MetaDropout:
 
   # compute the test loss of a single task
   def get_loss_single(self, inputs, training, reuse=None):
+    # print(inputs)
     xtr, ytr, xte, yte = inputs
     theta = self.get_theta(reuse=reuse)
     phi = self.get_phi(reuse=reuse)
@@ -116,10 +117,13 @@ class MetaDropout:
       theta = dict(zip(theta.keys(), [theta[key] - self.inner_lr * gradients[key] for key in theta.keys()]))
 
     with tf.GradientTape() as gg:
+      gg.watch(theta)
+      gg.watch(phi)
       logits = self.forward(xte, theta, phi, sample=False)
       loss = cross_entropy(logits, yte)
     acc = accuracy(logits, yte)
-    return loss, acc
+    print(gg)
+    return loss, acc, gg
 
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, training, data_episode):
@@ -127,16 +131,25 @@ class MetaDropout:
     # xte, yte = self.episodes['xte'], self.episodes['yte']
 
     xtr, ytr, xte, yte = data_episode
+    # print(data_episode[0][0].shape)
+    # data_episode = [tf.convert_to_tensor(x) for x in data_episode]
 
     get_single_train = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
     get_single_test = lambda inputs: self.get_loss_single(inputs, False, reuse=True)
     get_single = get_single_train if training else get_single_test
 
-    cent, acc, gg \
-        = tf.map_fn(get_single,
-            elems=(xtr, ytr, xte, yte),
-            dtype=(tf.float32, tf.float32),
-            parallel_iterations=self.metabatch)
+    # cent, acc, gg \
+    #     = tf.map_fn(get_single,
+    #         elems=(xtr, ytr, xte, yte),
+    #         dtype=(tf.float32, tf.float32),
+    #         parallel_iterations=self.metabatch)
+
+    cent, acc, gg = [],[],[]
+    for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
+      centi, acci, ggi = self.get_loss_single(inputs=[xtr[0], ytr[0], xte[0], yte[0]], training=True, reuse=False)
+      cent.append(centi)
+      acc.append(acci)
+      gg.append(ggi)
 
     # return the output
     net = {}

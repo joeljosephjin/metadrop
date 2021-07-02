@@ -52,7 +52,7 @@ for i in range(args.n_train_iters+1):
   net_weights = net['weights']
   net_gg = net['grad_tapes']
 
-  print('net gg:', net_gg)
+  # print('net gg:', net_gg)
 
   # meta-training
   global_step = tf.train.get_or_create_global_step()
@@ -64,7 +64,9 @@ for i in range(args.n_train_iters+1):
   else:
     var_list = net_weights
 
-  meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list)
+  print('var list here', var_list)
+
+  meta_train_operation = gradient_clipper(optim, net_cent, global_step=global_step, var_list=var_list, net_gg=net_gg)
 
   # _, cent, acc = sess.run([meta_train_operation, net_cent, net_acc_mean], feed_dict=dict(zip(data_placeholders, data_episode)))
 
