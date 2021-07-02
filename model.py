@@ -155,13 +155,14 @@ class MetaDropout:
 
     # return the output
     theta_grads = [grads_list[i][0] for i in range(4)]
-    theta_grads_sum = [i for i in zip(*theta_grads)]
-
-    print('here:', len(theta_grads_sum))
-    print('here:', theta_grads_sum[0])
+    theta_grads_sum = [None]*len(theta_grads[0])
+    for i in range(len(theta_grads)):
+      theta_grads_sum = [tgs+tg if tgs is not None else tg for tgs, tg in zip(theta_grads_sum, theta_grads[i])]
 
     phi_grads = [grads_list[i][1] for i in range(4)]
-    phi_grads_sum = [i for i in zip(*theta_grads)]
+    phi_grads_sum = [None]*len(phi_grads[0])
+    for i in range(len(phi_grads)):
+      phi_grads_sum = [tgs+tg if tgs is not None else tg for tgs, tg in zip(phi_grads_sum, phi_grads[i])]
 
     net = {}
     net['cent'] = tf.reduce_mean(cent)

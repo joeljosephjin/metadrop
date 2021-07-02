@@ -57,11 +57,13 @@ for i in range(args.n_train_iters+1):
 
   optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
 
-  # print(len(net_grads[0][0]))
-  # print(net_weights[0][0])
+  print(len(net_grads[0]))
+  print(len(net_weights[0]))
 
-  grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads, net_weights)]
+  grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[0], net_weights[0])]
+  grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[1], net_weights[1])]
 
-  _ = optim.apply_gradients(grad_and_vars, global_step=global_step)
+  _ = optim.apply_gradients(grad_and_vars0, global_step=global_step)
+  _ = optim.apply_gradients(grad_and_vars1, global_step=global_step)
 
-  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',cent,'acc:',acc)
+  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'cent:',net_cent,'acc:',net_acc_mean)
