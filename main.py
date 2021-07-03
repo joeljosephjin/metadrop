@@ -15,6 +15,9 @@ import wandb
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument('--name', type=str, default='unnamed', 
+    help='name of the run in wandb')
+
 parser.add_argument('--gpu_id', type=int, default=0,
     help='GPU id')
 
@@ -72,7 +75,7 @@ if args.fixed_gaussian:
   args.maml=False
 
 # incorporate wandb
-wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args))
+wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args), name=args.name)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
