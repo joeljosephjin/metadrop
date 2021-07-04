@@ -15,6 +15,9 @@ import wandb
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument('--name', type=str, default='unnamed', 
+    help='name of the run in wandb')
+
 parser.add_argument('--gpu_id', type=int, default=0,
     help='GPU id')
 
@@ -63,10 +66,16 @@ parser.add_argument('--n_test_mc_samp', type=int, default=1,
 parser.add_argument('--maml', action='store_true', default=False,
     help='whether to convert this model back to the base MAML or not')
 
+parser.add_argument('--fixed_gaussian', action='store_true', default=False,
+    help='whether trying fixed gaussian')
+
 args = parser.parse_args()
 
+if args.fixed_gaussian:
+  args.maml=False
+
 # incorporate wandb
-wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args))
+wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args), name=args.name)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
 
@@ -106,7 +115,10 @@ def meta_train():
   if args.maml:
     var_list = [v for v in net_weights if 'phi' not in v.name]
   else:
-    var_list = net_weights
+    if args.fixed_gaussian:
+      var_list = [v for v in net_weights if 'phi' not in v.name]
+    else:
+      var_list = net_weights
 
   meta_train_op = get_train_op(optim, net_cent, clip=[-3., 3.],
       global_step=global_step, var_list=var_list)
