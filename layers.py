@@ -17,23 +17,34 @@ batch_norm = tf.contrib.layers.batch_norm
 normal = tf.distributions.Normal
 
 # blocks
-def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
+def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False, noise_type="metadrop"):
   mu = tf.nn.conv2d(x, wt, [1,1,1,1], 'SAME') + bt # NHWC
   alpha = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp # NHWC
 
   ones = tf.ones_like(alpha)
-  mult_noise = normal(alpha, ones).sample() if sample else alpha
-
-  if maml:
-    x = mu
-  else:
+  if noise_type == "fixed_gaussian":
+    zeros = tf.ones_like(alpha)
+    mult_noise = normal(zeros, ones).sample() if sample else alpha
     x = mu * softplus(mult_noise)
+  elif noise_type == "weight_gaussian":
+    zeros = tf.ones_like(alpha)
+    mult_noise = normal(zeros, alpha).sample() if sample else alpha
+    x = mu * softplus(mult_noise)
+  elif noise_type == "independent_gaussian":
+    alpha_ind = tf.nn.conv2d(tf.ones_like(x), wp, [1,1,1,1], 'SAME') + bp # NHWC
+    mult_noise = normal(alpha_ind, ones).sample() if sample else alpha
+    x = mu * softplus(mult_noise)
+  elif noise_type == "metadrop":
+    mult_noise = normal(alpha, ones).sample() if sample else alpha
+    x = mu * softplus(mult_noise)
+  elif noise_type == "maml":
+    x = mu
 
   x = batch_norm(x, activation_fn=relu, scope=bn_scope, reuse=tf.AUTO_REUSE)
   x = tf.nn.max_pool(x, [1,2,2,1], [1,2,2,1], 'VALID')
   return x
 
-def dense_block(x, wt, bt, wp, bp, sample=False, maml=False):
+def dense_block(x, wt, bt, wp, bp, sample=False, maml=False, noise_type="metadrop"):
   mu = tf.matmul(flatten(x), wt) + bt
   sigma = softplus(tf.matmul(flatten(x), wp) + bp)
 

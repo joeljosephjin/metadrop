@@ -66,7 +66,14 @@ parser.add_argument('--n_test_mc_samp', type=int, default=1,
 parser.add_argument('--maml', action='store_true', default=False,
     help='whether to convert this model back to the base MAML or not')
 
+parser.add_argument('--noise_type', type=str, default='metadrop',
+    help='either metadrop or fixed_gaussian or weight_gaussian or independent_gaussian' or 'maml')
+
 args = parser.parse_args()
+
+if args.noise_type == 'maml':
+  # when maml is true, the phi does not get trained
+  args.maml = True
 
 # incorporate wandb
 wandb.init(project='metadrop', entity='joeljosephjin', config=vars(args))

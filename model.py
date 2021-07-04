@@ -21,6 +21,7 @@ class MetaDropout:
 
     # whether to convert this model back to the base MAML or not
     self.maml = args.maml
+    self.noise_type = args.noise_type
 
     xshape = [self.metabatch, None, self.xdim*self.xdim*self.input_channel]
     yshape = [self.metabatch, None, self.way]
@@ -80,12 +81,12 @@ class MetaDropout:
       wt, bt = theta['conv%d_w'%l], theta['conv%d_b'%l]
       wp, bp = phi['conv%d_w'%l], phi['conv%d_b'%l]
       x = conv_block(x, wt, bt, wp, bp, sample=sample,
-          bn_scope='conv%d_bn'%l, maml=self.maml)
+          bn_scope='conv%d_bn'%l, maml=self.maml, noise_type=self.noise_type)
 
     # final dense layer --> additive noise
     wt, bt = theta['dense_w'], theta['dense_b']
     wp, bp = phi['dense_w'], phi['dense_b']
-    x = dense_block(x, wt, bt, wp, bp, sample=sample, maml=self.maml)
+    x = dense_block(x, wt, bt, wp, bp, sample=sample, maml=self.maml, noise_type=self.noise_type)
     return x
 
   # compute the test loss of a single task
