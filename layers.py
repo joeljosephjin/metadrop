@@ -37,6 +37,11 @@ def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False, 
   elif noise_type == "metadrop":
     mult_noise = normal(alpha, ones).sample() if sample else alpha
     x = mu * softplus(mult_noise)
+  elif noise_type == "additive":
+    lamda = 0.1
+    zeros = tf.ones_like(alpha)
+    mult_noise = normal(zeros, alpha*(lamda**2)).sample() if sample else alpha
+    x = mu + mult_noise
   elif noise_type == "maml":
     x = mu
 
