@@ -43,4 +43,4 @@ for i in range(args.n_train_iters+1):
   # meta-training pipeline
   loss, acc = model.get_loss_multiple(True, data_episode, optim)
 
-  if i % 50 == 0: print('episode:',i*args.metabatch,'iteration:',i,'loss:',loss.numpy(),'acc:',acc.numpy())
+  if i % 3 == 0: print('episode:',i*args.metabatch,'iteration:',i,'loss:',loss.numpy(),'acc:',acc.numpy())
