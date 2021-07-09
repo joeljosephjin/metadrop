@@ -87,14 +87,8 @@ class MetaDropout:
     x = dense_block(x, wt, bt, wp, bp, sample=sample, maml=self.maml)
     return x
 
-  # compute the test loss of a single task
-#   def get_loss_single(self, inputs, training, reuse=None, outer_tape=None):
-
-
-#     return loss, acc, grads
-
   # compute the test loss over multiple tasks
-  def get_loss_multiple(self, training, data_episode, optim):
+  def get_loss_multiple(self, data_episode, optim):
 
     xtr, ytr, xte, yte = data_episode
 
