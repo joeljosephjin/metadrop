@@ -180,12 +180,3 @@ class MetaDropout:
     net['grads'] = [theta_grads_sum, phi_grads_sum]
     return net
 
-  # last layer activation
-  def forward_h(self, x, theta, phi, sample=False):
-    x = tf.reshape(x, [-1, self.xdim, self.xdim, self.input_channel])
-    for l in [1,2,3,4]:
-      wt, bt = theta['conv%d_w'%l], theta['conv%d_b'%l]
-      wp, bp = phi['conv%d_w'%l], phi['conv%d_b'%l]
-      x = conv_block(x, wt, bt, wp, bp, sample=sample, bn_scope='conv%d_bn'%l, maml=self.maml)
-    x = flatten(x)
-    return x
