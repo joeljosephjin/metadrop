@@ -76,15 +76,10 @@ class MetaDropout:
 
     # conventional 4-conv network --> multiplicative noise
     for l in [1,2,3,4]:
-      wt, bt = theta['conv%d_w'%l], theta['conv%d_b'%l]
-      wp, bp = phi['conv%d_w'%l], phi['conv%d_b'%l]
-      x = conv_block(x, wt, bt, wp, bp, sample=sample,
-          bn_scope='conv%d_bn'%l, maml=self.maml)
+      x = conv_block(x, theta['conv%d_w'%l], theta['conv%d_b'%l], phi['conv%d_w'%l], phi['conv%d_b'%l], sample=sample, bn_scope='conv%d_bn'%l, maml=self.maml)
 
     # final dense layer --> additive noise
-    wt, bt = theta['dense_w'], theta['dense_b']
-    wp, bp = phi['dense_w'], phi['dense_b']
-    x = dense_block(x, wt, bt, wp, bp, sample=sample, maml=self.maml)
+    x = dense_block(x, theta['dense_w'], theta['dense_b'], phi['dense_w'], phi['dense_b'], sample=sample, maml=self.maml)
     return x
 
   # compute the test loss over multiple tasks
