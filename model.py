@@ -133,7 +133,7 @@ class MetaDropout:
     return loss, acc, grads
 
   # compute the test loss over multiple tasks
-  def get_loss_multiple(self, training, data_episode):
+  def get_loss_multiple(self, training, data_episode, optim):
     # xtr, ytr = self.episodes['xtr'], self.episodes['ytr']
     # xte, yte = self.episodes['xte'], self.episodes['yte']
 
@@ -151,12 +151,12 @@ class MetaDropout:
     #         dtype=(tf.float32, tf.float32),
     #         parallel_iterations=self.metabatch)
 
-    cent, acc, grads_list = [],[],[]
+    losses, acc, grads_list = [],[],[]
     with tf.GradientTape() as outer_tape:
         for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
             # print('thru the for loop a time')
             centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=True, outer_tape=outer_tape)
-            cent.append(centi)
+            losses.append(centi)
             acc.append(acci)
             grads_list.append(gradsi)
 
@@ -171,10 +171,14 @@ class MetaDropout:
     for i in range(len(phi_grads)):
       phi_grads_sum = [tgs+tg if tgs is not None else tg for tgs, tg in zip(phi_grads_sum, phi_grads[i])]
 
-    net = {}
-    net['cent'] = tf.reduce_mean(cent)
-    net['acc'] = acc
-    net['weights'] = [list(self.theta.values()), list(self.phi.values())]
-    net['grads'] = [theta_grads_sum, phi_grads_sum]
-    return net
+    grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(theta_grads_sum, list(self.theta.values()))]
+    grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(phi_grads_sum, list(self.phi.values()))]
+
+    # print('before: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+    _ = optim.apply_gradients(grad_and_vars0)
+    # print('after: weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+    _ = optim.apply_gradients(grad_and_vars1)
+    # print('after (2): weights:', net_weights[0][0][0][0][0][0].numpy(),'grads:', net_grads[0][0][0][0][0][0].numpy())
+
+    return tf.reduce_mean(losses), tf.reduce_mean(acc)
 
