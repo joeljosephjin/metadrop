@@ -33,6 +33,9 @@ data = Data(args)
 # model object
 model = MetaDropout(args)
 
+# meta-training
+optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
+
 # start training
 for i in range(args.n_train_iters+1):
   data_episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
@@ -44,9 +47,6 @@ for i in range(args.n_train_iters+1):
   net_acc_mean = tf.reduce_mean(net['acc'])
   net_weights = net['weights']
   net_grads = net['grads']
-
-  # meta-training
-  optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
 
   grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[0], net_weights[0])]
   grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(net_grads[1], net_weights[1])]

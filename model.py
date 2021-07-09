@@ -88,12 +88,12 @@ class MetaDropout:
     return x
 
   # compute the test loss of a single task
-  def get_loss_single(self, inputs, training, reuse=None):
+  def get_loss_single(self, inputs, training, reuse=None, outer_tape=None):
     # print(inputs)
     xtr, ytr, xte, yte = inputs
     theta = self.theta
     # print('in get_loss_single (0): weights:', list(theta.values())[0][0][0][0][0].numpy())
-    theta = self.theta
+    # theta = self.theta
     # print('in get_loss_single: weights:', list(theta.values())[0][0][0][0][0].numpy())
 
     theta_clone = deepcopy(theta)
@@ -108,20 +108,17 @@ class MetaDropout:
       # evaluate the expected loss over input-dependent noise distribution with MC approx.
       # if meta-training then we sample once for efficiency.
       # if meta-testing then we sample as much as possible (e.g. 30) for accuracy.
-      with tf.GradientTape() as g:
-        g.watch(list(theta_clone.values()))
-        for j in range(1 if training else self.n_test_mc_samp):
-          inner_logits = self.forward(xtr, theta_clone, phi_clone, sample=True)
-          inner_loss.append(cross_entropy(inner_logits, ytr))
-        inner_loss = tf.reduce_mean(inner_loss)
+      for j in range(1 if training else self.n_test_mc_samp):
+        with tf.GradientTape() as inner_tape:
+            inner_tape.watch(list(theta_clone.values()))
+            inner_logits = self.forward(xtr, theta_clone, phi_clone, sample=True)
+            inner_loss = cross_entropy(inner_logits, ytr)
 
-      # compute inner-gradient
-      grads = g.gradient(inner_loss, list(theta_clone.values()))
-      # print(grads)
-      gradients = dict(zip(theta_clone.keys(), grads))
+        # compute inner-gradient
+        grads = inner_tape.gradient(inner_loss, list(theta_clone.values()))
+        gradients = dict(zip(theta_clone.keys(), grads))
 
-      # perform the current gradient step
-      theta_clone = dict(zip(theta_clone.keys(), [theta_clone[key] - self.inner_lr * gradients[key] for key in theta_clone.keys()]))
+        theta_clone = dict(zip(theta_clone.keys(), [theta_clone[key] - self.inner_lr * gradients[key] for key in theta_clone.keys()]))
 
     with tf.GradientTape() as gg:
       gg.watch(theta_clone)
@@ -155,12 +152,13 @@ class MetaDropout:
     #         parallel_iterations=self.metabatch)
 
     cent, acc, grads_list = [],[],[]
-    for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-      # print('thru the for loop a time')
-      centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=True)
-      cent.append(centi)
-      acc.append(acci)
-      grads_list.append(gradsi)
+    with tf.GradientTape() as outer_tape:
+        for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
+            # print('thru the for loop a time')
+            centi, acci, gradsi = self.get_loss_single(inputs=[xtri, ytri, xtei, ytei], training=True, reuse=True, outer_tape=outer_tape)
+            cent.append(centi)
+            acc.append(acci)
+            grads_list.append(gradsi)
 
     # return the output
     theta_grads = [grads_list[i][0] for i in range(4)]
