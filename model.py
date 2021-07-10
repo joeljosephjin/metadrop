@@ -72,8 +72,16 @@ class MetaDropout(tf.keras.Model):
     x = dense_block(x, theta['dense_w'], theta['dense_b'], phi['dense_w'], phi['dense_b'], sample=sample, maml=self.maml)
     return x
 
-  def metaupdate(self, theta, phi, grads):
-      return None
+  def metaupdate(self, theta, grads):
+      theta_clone = deepcopy(theta)
+      
+      for key, _ in theta_clone.items():
+          theta_clone[key] = theta[key]
+
+      for key, _ in theta_clone.items():
+          theta_clone[key] = theta_clone[key] - self.inner_lr * grads[key]
+
+      return theta_clone
 
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
@@ -85,9 +93,9 @@ class MetaDropout(tf.keras.Model):
 
     losses, acc, grads_list = [],[],[]
     with tf.GradientTape() as outer_tape:
+        # outer_tape.watch()
         for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-            
-            theta_clone = deepcopy(theta)
+            theta_clone = theta
             phi_clone = phi
 
             for i in range(self.n_steps): # 5 inner update steps
@@ -99,35 +107,21 @@ class MetaDropout(tf.keras.Model):
                 # compute inner-gradient
                 grads = inner_tape.gradient(inner_loss, list(theta_clone.values()))
                 gradients = dict(zip(theta_clone.keys(), grads))
+                theta_clone = self.metaupdate(theta_clone, gradients)
 
-                theta_clone = dict(zip(theta_clone.keys(), [theta_clone[key] - self.inner_lr * gradients[key] for key in theta_clone.keys()]))
-
-            with tf.GradientTape() as gg:
-                gg.watch(theta_clone)
-                gg.watch(phi_clone)
-                logits = self.call(xtei, theta_clone, phi_clone, sample=False)
-                lossi = cross_entropy(logits, ytei)
+            logits = self.call(xtei, theta_clone, phi_clone, sample=False)
+            lossi = cross_entropy(logits, ytei)
             acci = accuracy(logits, ytei)
-
-            gradsi = gg.gradient(lossi, [list(theta_clone.values()), list(phi_clone.values())])
 
             losses.append(lossi)
             acc.append(acci)
-            grads_list.append(gradsi)
 
-    # return the output
-    theta_grads = [grads_list[i][0] for i in range(4)]
-    theta_grads_sum = [None]*len(theta_grads[0])
-    for i in range(len(theta_grads)):
-      theta_grads_sum = [tgs+tg if tgs is not None else tg for tgs, tg in zip(theta_grads_sum, theta_grads[i])]
+        loss_sum = sum(losses)
 
-    phi_grads = [grads_list[i][1] for i in range(4)]
-    phi_grads_sum = [None]*len(phi_grads[0])
-    for i in range(len(phi_grads)):
-      phi_grads_sum = [tgs+tg if tgs is not None else tg for tgs, tg in zip(phi_grads_sum, phi_grads[i])]
+    grads = outer_tape.gradient(loss_sum, [list(theta.values()), list(phi.values())])
 
-    grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(theta_grads_sum, list(self.theta.values()))]
-    grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(phi_grads_sum, list(self.phi.values()))]
+    grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[0], list(self.theta.values()))]
+    grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[1], list(self.phi.values()))]
 
     _ = optim.apply_gradients(grad_and_vars0)
     _ = optim.apply_gradients(grad_and_vars1)
