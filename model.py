@@ -2,7 +2,7 @@ from layers import *
 from copy import deepcopy
 
 
-class MetaDropout:
+class MetaDropout(tf.keras.Model):
   def __init__(self, args):
     self.dataset = args.dataset
     if self.dataset == 'omniglot':
@@ -63,8 +63,8 @@ class MetaDropout:
       phi['dense_b'] = tf.tile(single_b, [self.way])
       return phi
 
-  # forward the main network with/without perturbation
-  def forward(self, x, theta, phi, sample=False):
+  # call the main network with/without perturbation
+  def call(self, x, theta, phi, sample=False):
     x = tf.reshape(x, [-1, self.xdim, self.xdim, self.input_channel])
 
     # conventional 4-conv network --> multiplicative noise
@@ -77,20 +77,22 @@ class MetaDropout:
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
 
+    theta = self.theta
+    phi = self.phi
+
     xtr, ytr, xte, yte = data_episode
 
     losses, acc, grads_list = [],[],[]
     with tf.GradientTape() as outer_tape:
         for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-            theta = self.theta
+            
             theta_clone = deepcopy(theta)
-            phi = self.phi
             phi_clone = deepcopy(phi)
 
             for i in range(self.n_steps): # 5 inner update steps
                 with tf.GradientTape() as inner_tape:
                     inner_tape.watch(list(theta_clone.values()))
-                    inner_logits = self.forward(xtri, theta_clone, phi_clone, sample=True)
+                    inner_logits = self.call(xtri, theta_clone, phi_clone, sample=True)
                     inner_loss = cross_entropy(inner_logits, ytri)
 
                 # compute inner-gradient
@@ -102,7 +104,7 @@ class MetaDropout:
             with tf.GradientTape() as gg:
                 gg.watch(theta_clone)
                 gg.watch(phi_clone)
-                logits = self.forward(xtei, theta_clone, phi_clone, sample=False)
+                logits = self.call(xtei, theta_clone, phi_clone, sample=False)
                 lossi = cross_entropy(logits, ytei)
             acci = accuracy(logits, ytei)
 
