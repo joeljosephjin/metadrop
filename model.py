@@ -72,6 +72,9 @@ class MetaDropout(tf.keras.Model):
     x = dense_block(x, theta['dense_w'], theta['dense_b'], phi['dense_w'], phi['dense_b'], sample=sample, maml=self.maml)
     return x
 
+  def metaupdate(self, theta, phi, grads):
+      return None
+
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
 
@@ -85,7 +88,7 @@ class MetaDropout(tf.keras.Model):
         for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
             
             theta_clone = deepcopy(theta)
-            phi_clone = deepcopy(phi)
+            phi_clone = phi
 
             for i in range(self.n_steps): # 5 inner update steps
                 with tf.GradientTape() as inner_tape:
