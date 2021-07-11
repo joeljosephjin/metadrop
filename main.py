@@ -198,6 +198,8 @@ def meta_test():
         n_episodes=args.metabatch)
     fd_mte= dict(zip(placeholders, episode))
     acc.append(sess.run(tnet_acc, feed_dict=fd_mte))
+    if j % 10 == 0:
+      print('acc:', acc[-1])
 
   acc = 100.*np.concatenate(acc, axis=0)
 
@@ -205,6 +207,7 @@ def meta_test():
   acc_95conf = 1.96*np.std(acc)/float(np.sqrt(args.n_test_iters))
 
   result = 'accuracy : %f +- %f'%(acc_mean, acc_95conf)
+  wandb.log({'test-acc':acc_mean})
   print(result)
 
 
@@ -242,6 +245,7 @@ def export():
 if __name__=='__main__':
   if args.mode == 'meta_train':
     meta_train()
+    meta_test()
   elif args.mode == 'meta_test':
     meta_test()
   elif args.mode == 'export':
