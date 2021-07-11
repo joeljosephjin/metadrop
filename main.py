@@ -200,7 +200,7 @@ def meta_test():
     fd_mte= dict(zip(placeholders, episode))
     acc.append(sess.run(tnet_acc, feed_dict=fd_mte))
     if j % 10 == 0:
-      print('acc:', acc[-1])
+      print('acc:', np.mean(acc[-1]))
 
   acc = 100.*np.concatenate(acc, axis=0)
 
