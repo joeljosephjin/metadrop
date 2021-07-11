@@ -207,7 +207,7 @@ def meta_test():
   acc_95conf = 1.96*np.std(acc)/float(np.sqrt(args.n_test_iters))
 
   result = 'accuracy : %f +- %f'%(acc_mean, acc_95conf)
-  wandb.log({'test-acc':acc_mean})
+  wandb.log({'meta-test-acc':acc_mean})
   print(result)
 
 
