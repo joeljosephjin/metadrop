@@ -71,6 +71,9 @@ parser.add_argument('--noise_type', type=str, default='metadrop',
 
 args = parser.parse_args()
 
+if args.maml:
+  args.noise_type = 'maml'
+
 if args.noise_type == 'maml':
   # when maml is true, the phi does not get trained
   args.maml = True
