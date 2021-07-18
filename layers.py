@@ -23,26 +23,32 @@ def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False, 
 
   ones = tf.ones_like(alpha)
   if noise_type == "fixed_gaussian":
+    print("its fixed_gaussian")
     zeros = tf.ones_like(alpha)
     mult_noise = normal(zeros, ones).sample() if sample else alpha
     x = mu * softplus(mult_noise)
   elif noise_type == "weight_gaussian":
+    print("its weight_gaussian")
     zeros = tf.ones_like(alpha)
     mult_noise = normal(zeros, alpha).sample() if sample else alpha
     x = mu * softplus(mult_noise)
   elif noise_type == "independent_gaussian":
+    print("its independent_gaussian")
     alpha_ind = tf.nn.conv2d(tf.ones_like(x), wp, [1,1,1,1], 'SAME') + bp # NHWC
     mult_noise = normal(alpha_ind, ones).sample() if sample else alpha
     x = mu * softplus(mult_noise)
   elif noise_type == "metadrop":
+    print('its metadrop')
     mult_noise = normal(alpha, ones).sample() if sample else alpha
     x = mu * softplus(mult_noise)
   elif noise_type == "additive":
+    print('its additive')
     lamda = 0.1
     zeros = tf.ones_like(alpha)
     mult_noise = normal(zeros, alpha*(lamda**2)).sample() if sample else alpha
     x = mu + mult_noise
   elif noise_type == "maml":
+    print('its maml')
     x = mu
 
   x = batch_norm(x, activation_fn=relu, scope=bn_scope, reuse=tf.AUTO_REUSE)
