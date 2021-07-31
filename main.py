@@ -7,7 +7,6 @@ import os
 
 from model import MetaDropout
 from data import Data
-from accumulator import Accumulator
 from layers import get_train_op
 
 parser = argparse.ArgumentParser()
@@ -41,7 +40,7 @@ placeholders = [epi['xtr'], epi['ytr'], epi['xte'], epi['yte']]
 
 # meta-training pipeline
 net = model.get_loss_multiple(True)
-net_cent = net['cent']
+net_loss = net['cent']
 net_acc_mean = tf.reduce_mean(net['acc'])
 net_weights = net['weights']
 
@@ -49,7 +48,10 @@ net_weights = net['weights']
 global_step = tf.train.get_or_create_global_step()
 lr = tf.convert_to_tensor(args.meta_lr)
 optim = tf.train.AdamOptimizer(lr)
-meta_train_op = get_train_op(optim, net_cent, clip=[-3., 3.], global_step=global_step, var_list=net_weights)
+
+grad_and_vars = optim.compute_gradients(net_loss, var_list=net_weights)
+grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, -3., 3.)), var) for grad, var in grad_and_vars]
+train_operation = optim.apply_gradients(grad_and_vars, global_step=global_step)
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
@@ -58,7 +60,7 @@ start = time.time()
 for i in range(args.n_train_iters+1):
     episode = data.generate_episode(args, meta_training=True, n_episodes=args.metabatch)
 
-    _, _, acc = sess.run([meta_train_op, net_cent, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
+    _, _, acc = sess.run([train_operation, net_loss, net_acc_mean], feed_dict=dict(zip(placeholders, episode)))
 
     if i % 50 == 0:
         print("time:", int(time.time()-start), 's, acc:', int(acc*100), '%')
