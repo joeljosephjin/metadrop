@@ -28,8 +28,6 @@ parser.add_argument('--n_test_mc_samp', type=int, default=1)
 parser.add_argument('--maml', action='store_true', default=False)
 args = parser.parse_args()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
-
 # for generating episode
 data = Data(args)
 

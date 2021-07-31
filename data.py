@@ -1,3 +1,36 @@
+#------download-dataset--------
+import os
+
+if not os.path.isdir('data'):
+    os.makedirs('data')
+
+path = os.path.join('data', 'omniglot')
+if not os.path.isdir(path):
+    from tqdm import tqdm
+    import requests
+
+    def download_file(url, filename):
+        chunkSize = 1024
+        r = requests.get(url, stream=True)
+        with open(filename, 'wb') as f:
+            pbar = tqdm( unit="B", total=int( r.headers['Content-Length'] ) )
+            for chunk in r.iter_content(chunk_size=chunkSize):
+                if chunk:
+                    pbar.update(len(chunk))
+                    f.write(chunk)
+        return filename
+
+    os.makedirs(path)
+    print("Downloading train.npy of Omniglot\n")
+    download_file('https://www.dropbox.com/s/h13g4b2awd7xdr6/train.npy?dl=1', os.path.join(path, 'train.npy'))
+    print("Downloading test.npy of Omniglot\n")
+    download_file('https://www.dropbox.com/s/w313ybz6rls1e83/test.npy?dl=1', os.path.join(path, 'test.npy'))
+    print("Downloading done.\n")
+else:
+    print('dataset already downloaded!')
+#------download-dataset--------
+
+
 import numpy as np
 
 class Data:
