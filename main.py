@@ -1,4 +1,3 @@
-from __future__ import print_function
 import tensorflow as tf
 import argparse
 import numpy as np
@@ -7,7 +6,6 @@ import os
 
 from model import MetaDropout
 from data import Data
-from layers import get_train_op
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu_id', type=int, default=0)
