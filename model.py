@@ -55,7 +55,7 @@ class MetaDropout:
 
         # conventional 4-conv network --> multiplicative noise
         for l in [1,2,3,4]:
-            wt, bt = theta['conv%d_weight'%l], theta['conv'+l+'_bias']
+            wt, bt = theta['conv%d_weight'%l], theta['conv%d_bias'%l]
             wp, bp = phi['conv%d_weight'%l], phi['conv%d_bias'%l]
             x = conv_block(x, wt, bt, wp, bp, sample=sample, bn_scope='conv%d_bn'%l, maml=self.maml)
 
@@ -98,7 +98,7 @@ class MetaDropout:
 
         get_single = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
 
-        loss, acc = tf.map_fn(get_single, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32), parallel_iterations=self.metabatch)
+        loss, acc = tf.map_fn(get_single, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32))
 
         # return the output
         net = {}
