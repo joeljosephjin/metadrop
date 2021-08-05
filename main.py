@@ -45,6 +45,7 @@ global_step = tf.train.get_or_create_global_step()
 lr = tf.convert_to_tensor(args.meta_lr)
 optim = tf.train.AdamOptimizer(lr)
 
+# outer grad update
 grad_and_vars = optim.compute_gradients(net_loss, var_list=net_weights)
 grad_and_vars = [((None if grad is None else tf.clip_by_value(grad, -3., 3.)), var) for grad, var in grad_and_vars]
 train_operation = optim.apply_gradients(grad_and_vars, global_step=global_step)
