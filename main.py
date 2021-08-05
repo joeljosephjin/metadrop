@@ -36,7 +36,7 @@ placeholders = [epi['xtr'], epi['ytr'], epi['xte'], epi['yte']]
 
 # meta-training pipeline
 net = model.get_loss_multiple(True)
-net_loss = net['cent']
+net_loss = net['loss']
 net_acc_mean = tf.reduce_mean(net['acc'])
 net_weights = net['weights']
 

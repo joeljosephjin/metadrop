@@ -29,10 +29,10 @@ class MetaDropout:
             theta = {}
             for l in [1,2,3,4]:
                 indim = self.input_channel if l == 1 else self.n_channel
-                theta['conv%d_w'%l] = tf.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel])
-                theta['conv%d_b'%l] = tf.get_variable('conv%d_b'%l, [self.n_channel])
-            theta['dense_w'] = tf.get_variable('dense_w', [self.n_channel, self.way])
-            theta['dense_b'] = tf.get_variable('dense_b', [self.way])
+                theta['conv%d_weight'%l] = tf.get_variable('conv%d_weight'%l, [3, 3, indim, self.n_channel])
+                theta['conv%d_bias'%l] = tf.get_variable('conv%d_bias'%l, [self.n_channel])
+            theta['dense_weight'] = tf.get_variable('dense_weight', [self.n_channel, self.way])
+            theta['dense_bias'] = tf.get_variable('dense_bias', [self.way])
             return theta
 
     # noise function param.
@@ -41,13 +41,12 @@ class MetaDropout:
             phi = {}
             for l in [1,2,3,4]:
                 indim = self.input_channel if l == 1 else self.n_channel
-                phi['conv%d_w'%l] = tf.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel], initializer=self.conv_init)
-                phi['conv%d_b'%l] = tf.get_variable('conb%d_b'%l, [self.n_channel], initializer=self.zero_init)
-            factor = 5*5 if self.dataset == 'mimgnet' else 1
-            single_w = tf.get_variable('dense_w', [factor*self.n_channel, 1], initializer=self.fc_init)
-            single_b = tf.get_variable('dense_b', [1], initializer=self.zero_init)
-            phi['dense_w'] = tf.tile(single_w, [1, self.way])
-            phi['dense_b'] = tf.tile(single_b, [self.way])
+                phi['conv%d_weight'%l] = tf.get_variable('conv%d_weight'%l, [3, 3, indim, self.n_channel])
+                phi['conv%d_bias'%l] = tf.get_variable('conb%d_bias'%l, [self.n_channel])
+            single_w = tf.get_variable('dense_weight', [self.n_channel, 1])
+            single_b = tf.get_variable('dense_bias', [1])
+            phi['dense_weight'] = tf.tile(single_w, [1, self.way])
+            phi['dense_bias'] = tf.tile(single_b, [self.way])
             return phi
 
     # forward the main network with/without perturbation
@@ -56,13 +55,13 @@ class MetaDropout:
 
         # conventional 4-conv network --> multiplicative noise
         for l in [1,2,3,4]:
-            wt, bt = theta['conv%d_w'%l], theta['conv%d_b'%l]
-            wp, bp = phi['conv%d_w'%l], phi['conv%d_b'%l]
+            wt, bt = theta['conv%d_weight'%l], theta['conv'+l+'_bias']
+            wp, bp = phi['conv%d_weight'%l], phi['conv%d_bias'%l]
             x = conv_block(x, wt, bt, wp, bp, sample=sample, bn_scope='conv%d_bn'%l, maml=self.maml)
 
         # final dense layer --> additive noise
-        wt, bt = theta['dense_w'], theta['dense_b']
-        wp, bp = phi['dense_w'], phi['dense_b']
+        wt, bt = theta['dense_weight'], theta['dense_bias']
+        wp, bp = phi['dense_weight'], phi['dense_bias']
         x = dense_block(x, wt, bt, wp, bp, sample=sample, maml=self.maml)
         return x
 
@@ -97,15 +96,13 @@ class MetaDropout:
         xtr, ytr = self.episodes['xtr'], self.episodes['ytr']
         xte, yte = self.episodes['xte'], self.episodes['yte']
 
-        get_single_train = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
-        get_single_test = lambda inputs: self.get_loss_single(inputs, False, reuse=True)
-        get_single = get_single_train if training else get_single_test
+        get_single = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
 
-        cent, acc = tf.map_fn(get_single, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32), parallel_iterations=self.metabatch)
+        loss, acc = tf.map_fn(get_single, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32), parallel_iterations=self.metabatch)
 
         # return the output
         net = {}
-        net['cent'] = tf.reduce_mean(cent)
+        net['loss'] = tf.reduce_mean(loss)
         net['acc'] = acc
         net['weights'] = tf.trainable_variables()
         return net
