@@ -83,7 +83,7 @@ class MetaDropout(tf.keras.Model):
 
       return theta_clone
 
-  def inner_function(self, data, theta, phi, losses, acc):
+  def inner_function(self, data, theta, phi):
     xtri, ytri, xtei, ytei = data
     theta_clone = theta
     phi_clone = phi
@@ -103,9 +103,7 @@ class MetaDropout(tf.keras.Model):
     lossi = cross_entropy(logits, ytei)
     acci = accuracy(logits, ytei)
 
-    losses.append(lossi)
-    acc.append(acci)
-    return losses
+    return lossi, acci
 
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
@@ -116,19 +114,11 @@ class MetaDropout(tf.keras.Model):
     xtr, ytr, xte, yte = data_episode
 
     losses, acc, grads_list = [],[],[]
-    # inner function
     with tf.GradientTape() as outer_tape:
-        # outer_tape.watch()
+        inner_func = lambda inputs: self.inner_function(data=inputs, theta=theta, phi=phi)
+        loss, acc = tf.map_fn(inner_func, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32))
 
-        # losses = tf.map_fn()
-
-        for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-            losses = self.inner_function(data=(xtri, ytri, xtei, ytei), theta=theta, phi=phi, losses=losses, acc=acc)
-
-        loss_sum = sum(losses)
-    # inner function
-
-    grads = outer_tape.gradient(loss_sum, [list(theta.values()), list(phi.values())])
+    grads = outer_tape.gradient(loss, [list(theta.values()), list(phi.values())])
 
     grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[0], list(self.theta.values()))]
     grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[1], list(self.phi.values()))]
@@ -136,5 +126,5 @@ class MetaDropout(tf.keras.Model):
     _ = optim.apply_gradients(grad_and_vars0)
     _ = optim.apply_gradients(grad_and_vars1)
 
-    return tf.reduce_mean(losses), tf.reduce_mean(acc)
+    return tf.reduce_mean(loss), tf.reduce_mean(acc)
 
