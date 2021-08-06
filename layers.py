@@ -15,8 +15,8 @@ sqrt = tf.sqrt
 exp = tf.exp
 
 # layers
-flatten = tf.layers.flatten
-batch_norm = tf.contrib.layers.batch_norm
+# flatten = tf.layers.flatten
+flatten = tf.compat.v1.layers.flatten
 
 # distribution
 normal = tf.distributions.Normal
@@ -34,7 +34,11 @@ def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
   else:
     x = mu * softplus(mult_noise)
 
-  x = batch_norm(x, activation_fn=relu, scope=bn_scope, reuse=tf.AUTO_REUSE)
+#   print('1:', x[0][0][0][0].numpy())
+  x = tf.contrib.layers.batch_norm(x)
+#   print('2:', x[0][0][0][0].numpy())
+#   x = tf.compat.v1.layers.batch_normalization(x, center=True, scale=True)
+#   print('3:', x[0][0][0][0].numpy())
   x = tf.nn.max_pool(x, [1,2,2,1], [1,2,2,1], 'VALID')
   return x
 
