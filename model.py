@@ -83,6 +83,30 @@ class MetaDropout(tf.keras.Model):
 
       return theta_clone
 
+  def inner_function(self, data, theta, phi, losses, acc):
+    xtri, ytri, xtei, ytei = data
+    theta_clone = theta
+    phi_clone = phi
+
+    for i in range(self.n_steps): # 5 inner update steps
+        with tf.GradientTape() as inner_tape:
+            inner_tape.watch(list(theta_clone.values()))
+            inner_logits = self.call(xtri, theta_clone, phi_clone, sample=True)
+            inner_loss = cross_entropy(inner_logits, ytri)
+
+        # compute inner-gradient
+        grads = inner_tape.gradient(inner_loss, list(theta_clone.values()))
+        gradients = dict(zip(theta_clone.keys(), grads))
+        theta_clone = self.metaupdate(theta_clone, gradients)
+
+    logits = self.call(xtei, theta_clone, phi_clone, sample=False)
+    lossi = cross_entropy(logits, ytei)
+    acci = accuracy(logits, ytei)
+
+    losses.append(lossi)
+    acc.append(acci)
+    return losses
+
   # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
 
@@ -92,31 +116,17 @@ class MetaDropout(tf.keras.Model):
     xtr, ytr, xte, yte = data_episode
 
     losses, acc, grads_list = [],[],[]
+    # inner function
     with tf.GradientTape() as outer_tape:
         # outer_tape.watch()
+
+        # losses = tf.map_fn()
+
         for xtri, ytri, xtei, ytei in zip(xtr, ytr, xte, yte):
-            theta_clone = theta
-            phi_clone = phi
-
-            for i in range(self.n_steps): # 5 inner update steps
-                with tf.GradientTape() as inner_tape:
-                    inner_tape.watch(list(theta_clone.values()))
-                    inner_logits = self.call(xtri, theta_clone, phi_clone, sample=True)
-                    inner_loss = cross_entropy(inner_logits, ytri)
-
-                # compute inner-gradient
-                grads = inner_tape.gradient(inner_loss, list(theta_clone.values()))
-                gradients = dict(zip(theta_clone.keys(), grads))
-                theta_clone = self.metaupdate(theta_clone, gradients)
-
-            logits = self.call(xtei, theta_clone, phi_clone, sample=False)
-            lossi = cross_entropy(logits, ytei)
-            acci = accuracy(logits, ytei)
-
-            losses.append(lossi)
-            acc.append(acci)
+            losses = self.inner_function(data=(xtri, ytri, xtei, ytei), theta=theta, phi=phi, losses=losses, acc=acc)
 
         loss_sum = sum(losses)
+    # inner function
 
     grads = outer_tape.gradient(loss_sum, [list(theta.values()), list(phi.values())])
 
