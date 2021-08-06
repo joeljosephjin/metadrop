@@ -99,6 +99,19 @@ class MetaDropout:
         get_single = lambda inputs: self.get_loss_single(inputs, True, reuse=False)
 
         loss, acc = tf.map_fn(get_single, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32))
+        # loss, acc = 0, 0
+        # loss_, acc_ = self.get_loss_single(inputs=(xtr[0], ytr[0], xte[0], yte[0]), training=True, reuse=False)
+        # loss += loss_
+        # acc += acc_
+        # loss_, acc_ = self.get_loss_single(inputs=(xtr[1], ytr[1], xte[1], yte[1]), training=True, reuse=True)
+        # loss += loss_
+        # acc += acc_
+        # loss_, acc_ = self.get_loss_single(inputs=(xtr[2], ytr[2], xte[2], yte[2]), training=True, reuse=True)
+        # loss += loss_
+        # acc += acc_
+        # loss_, acc_ = self.get_loss_single(inputs=(xtr[3], ytr[3], xte[3], yte[3]), training=True, reuse=True)
+        # loss += loss_
+        # acc += acc_
 
         # return the output
         net = {}
