@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 # tf.set_random_seed(0)
 # tf.random.set_random_seed(0)
@@ -20,7 +21,7 @@ flatten = tf.compat.v1.layers.flatten
 batchnorm = tf.keras.layers.BatchNormalization()
 
 # distribution
-normal = tf.distributions.Normal
+normal = tfp.distributions.Normal
 
 # blocks
 def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
@@ -57,7 +58,7 @@ def dense_block(x, wt, bt, wp, bp, sample=False, maml=False):
 
 # training modules
 def cross_entropy(logits, labels):
-  return tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
+  return tf.compat.v1.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
 
 def accuracy(logits, labels):
   correct = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))

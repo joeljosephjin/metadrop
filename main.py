@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-config = tf.ConfigProto() # config gpu
-config.gpu_options.allow_growth = True # config gpu
+# config = tf.ConfigProto() # config gpu
+# config.gpu_options.allow_growth = True # config gpu
 
-tf.enable_eager_execution(config=config)
+# tf.enable_eager_execution(config=config)
 
 # tf.set_random_seed(0)
 # tf.random.set_random_seed(0)
@@ -34,7 +34,7 @@ data = Data(args)
 model = MetaDropout(args)
 
 # meta-training
-optim = tf.train.AdamOptimizer(tf.convert_to_tensor(args.meta_lr))
+optim = tf.optimizers.Adam(tf.convert_to_tensor(args.meta_lr))
 
 # start training
 for i in range(args.n_train_iters+1):

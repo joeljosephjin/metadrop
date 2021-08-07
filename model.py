@@ -28,9 +28,9 @@ class MetaDropout(tf.keras.Model):
     yshape = [self.metabatch, None, self.way]
 
     # param initializers
-    self.conv_init = tf.truncated_normal_initializer(stddev=0.02)
-    self.fc_init = tf.random_normal_initializer(stddev=0.02)
-    self.zero_init = tf.zeros_initializer()
+    self.conv_init = tf.compat.v1.truncated_normal_initializer(stddev=0.02)
+    self.fc_init = tf.compat.v1.random_normal_initializer(stddev=0.02)
+    self.zero_init = tf.compat.v1.zeros_initializer()
 
     self.theta = self.get_theta()
     self.phi = self.get_phi()
@@ -40,11 +40,11 @@ class MetaDropout(tf.keras.Model):
     theta = {}
     for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
-        theta['conv%d_w'%l] = tf.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel], initializer=self.conv_init)
-        theta['conv%d_b'%l] = tf.get_variable('conv%d_b'%l, [self.n_channel], initializer=self.zero_init)
+        theta['conv%d_w'%l] = tf.compat.v1.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel], initializer=self.conv_init)
+        theta['conv%d_b'%l] = tf.compat.v1.get_variable('conv%d_b'%l, [self.n_channel], initializer=self.zero_init)
     factor = 5*5 if self.dataset == 'mimgnet' else 1
-    theta['dense_w'] = tf.get_variable('dense_w', [factor*self.n_channel, self.way], initializer=self.fc_init)
-    theta['dense_b'] = tf.get_variable('dense_b', [self.way], initializer=self.zero_init)
+    theta['dense_w'] = tf.compat.v1.get_variable('dense_w', [factor*self.n_channel, self.way], initializer=self.fc_init)
+    theta['dense_b'] = tf.compat.v1.get_variable('dense_b', [self.way], initializer=self.zero_init)
     return theta
 
   # noise function param.
@@ -52,11 +52,11 @@ class MetaDropout(tf.keras.Model):
     phi = {}
     for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
-        phi['conv%d_w'%l] = tf.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel], initializer=self.conv_init)
-        phi['conv%d_b'%l] = tf.get_variable('conb%d_b'%l, [self.n_channel], initializer=self.zero_init)
+        phi['conv%d_w'%l] = tf.compat.v1.get_variable('conv%d_w'%l, [3, 3, indim, self.n_channel], initializer=self.conv_init)
+        phi['conv%d_b'%l] = tf.compat.v1.get_variable('conb%d_b'%l, [self.n_channel], initializer=self.zero_init)
     factor = 5*5 if self.dataset == 'mimgnet' else 1
-    single_w = tf.get_variable('dense_w', [factor*self.n_channel, 1], initializer=self.fc_init)
-    single_b = tf.get_variable('dense_b', [1], initializer=self.zero_init)
+    single_w = tf.compat.v1.get_variable('dense_w', [factor*self.n_channel, 1], initializer=self.fc_init)
+    single_b = tf.compat.v1.get_variable('dense_b', [1], initializer=self.zero_init)
     phi['dense_w'] = tf.tile(single_w, [1, self.way])
     phi['dense_b'] = tf.tile(single_b, [self.way])
     return phi
