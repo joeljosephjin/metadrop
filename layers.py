@@ -17,6 +17,7 @@ exp = tf.exp
 # layers
 # flatten = tf.layers.flatten
 flatten = tf.compat.v1.layers.flatten
+batchnorm = tf.keras.layers.BatchNormalization()
 
 # distribution
 normal = tf.distributions.Normal
@@ -38,13 +39,8 @@ def conv_block(x, wt, bt, wp, bp, sample=False, bn_scope='conv_bn', maml=False):
 #   x = tf.contrib.layers.batch_norm(x)
 #   print('2:', x[0][0][0][0].numpy())
 #   x = tf.compat.v1.layers.batch_normalization(x, epsilon=0.99, training=True)
-#   x = tf.keras.layers.BatchNormalization(
-#     name="BatchNorm",
-#     scale=True,
-#     center=True,
-#     trainable=True,
-#     training=True)(x)
-  x = tf.contrib.layers.batch_norm(x)
+  x = batchnorm(x, training=True)
+#   x = tf.contrib.layers.batch_norm(x)
 #   print('3:', x[0][0][0][0].numpy())
   x = tf.nn.max_pool(x, [1,2,2,1], [1,2,2,1], 'VALID')
   return x
