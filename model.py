@@ -120,8 +120,8 @@ class MetaDropout(tf.keras.Model):
 
     grads = outer_tape.gradient(loss, [list(theta.values()), list(phi.values())])
 
-    grad_and_vars0 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[0], list(self.theta.values()))]
-    grad_and_vars1 = [((None if grad is None else tf.clip_by_value(grad, -3.0, 3.0)), var) for grad, var in zip(grads[1], list(self.phi.values()))]
+    grad_and_vars0 = [((None if grad is None else tf.Variable(tf.clip_by_value(grad, -3.0, 3.0))), var) for grad, var in zip(grads[0], list(self.theta.values()))]
+    grad_and_vars1 = [((None if grad is None else tf.Variable(tf.clip_by_value(grad, -3.0, 3.0))), tf.Variable(var)) for grad, var in zip(grads[1], list(self.phi.values()))]
 
     _ = optim.apply_gradients(grad_and_vars0)
     _ = optim.apply_gradients(grad_and_vars1)

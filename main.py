@@ -34,7 +34,7 @@ data = Data(args)
 model = MetaDropout(args)
 
 # meta-training
-optim = tf.optimizers.Adam(tf.convert_to_tensor(args.meta_lr))
+optim = tf.keras.optimizers.Adam(tf.convert_to_tensor(args.meta_lr))
 
 # start training
 for i in range(args.n_train_iters+1):
