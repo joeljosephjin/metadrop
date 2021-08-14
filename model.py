@@ -31,7 +31,7 @@ class MetaDropout(tf.keras.Model):
     self.theta = self.get_theta()
     self.phi = self.get_phi()
 
-  def get_theta(self, reuse=None):
+  def get_theta(self):
     theta = {}
     for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
@@ -42,7 +42,7 @@ class MetaDropout(tf.keras.Model):
     theta['dense_b'] = tf.Variable(self.zero_init(shape=[self.way]), name='dense_b')
     return theta
 
-  def get_phi(self, reuse=None):
+  def get_phi(self):
     phi = {}
     for l in [1,2,3,4]:
         indim = self.input_channel if l == 1 else self.n_channel
@@ -52,8 +52,8 @@ class MetaDropout(tf.keras.Model):
     factor = 5*5 if self.dataset == 'mimgnet' else 1
     single_w = tf.Variable(self.fc_init(shape=[factor*self.n_channel, 1]), name='dense_w')
     single_b = tf.Variable(self.zero_init(shape=[1]), name='dense_b')
-    phi['dense_w'] = tf.tile(single_w, [1, self.way])
-    phi['dense_b'] = tf.tile(single_b, [self.way])
+    phi['dense_w'] = tf.tile(single_w, [1, self.way], name='dense_w')
+    phi['dense_b'] = tf.tile(single_b, [self.way], name='dense_b')
     return phi
 
   def call(self, x, theta, phi, sample=False):
@@ -104,6 +104,7 @@ class MetaDropout(tf.keras.Model):
 
     losses, acc, grads_list = [],[],[]
     with tf.GradientTape() as outer_tape:
+        outer_tape.watch([theta, phi])
         inner_func = lambda inputs: self.inner_function(data=inputs, theta=theta, phi=phi)
         loss, acc = tf.map_fn(inner_func, elems=(xtr, ytr, xte, yte), dtype=(tf.float32, tf.float32))
 
@@ -113,7 +114,8 @@ class MetaDropout(tf.keras.Model):
     grad_and_vars1 = [((None if grad is None else tf.Variable(tf.clip_by_value(grad, -3.0, 3.0))), tf.Variable(var)) for grad, var in zip(grads[1], list(self.phi.values()))]
 
     _ = optim.apply_gradients(grad_and_vars0)
-    _ = optim.apply_gradients(grad_and_vars1)
+    if not self.maml:
+        _ = optim.apply_gradients(grad_and_vars1)
 
     return tf.reduce_mean(loss), tf.reduce_mean(acc)
 
