@@ -11,7 +11,7 @@ from parsers import parser
 import wandb
 
 args = parser.parse_args()
-wandb.init(entity='joeljosephjin', project='metadrop', config=vars(args))
+wandb.init(entity='joeljosephjin', project='metadrop-tfnew', config=vars(args))
 data = Data(args)
 model = MetaDropout(args)
 optim = tf.keras.optimizers.Adam(tf.convert_to_tensor(args.meta_lr))
