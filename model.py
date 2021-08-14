@@ -17,17 +17,13 @@ class MetaDropout(tf.keras.Model):
     self.metabatch = args.metabatch # metabatch size
     self.inner_lr = args.inner_lr # inner-gradient stepsize
 
-    # number of MC samples to evaluate the expected inner-step loss
-    # over the input-dependent noise distribution
     self.n_test_mc_samp = args.n_test_mc_samp
 
-    # whether to convert this model back to the base MAML or not
     self.maml = args.maml
 
     xshape = [self.metabatch, None, self.xdim*self.xdim*self.input_channel]
     yshape = [self.metabatch, None, self.way]
 
-    # param initializers
     self.conv_init = tf.compat.v1.truncated_normal_initializer(stddev=0.02)
     self.fc_init = tf.compat.v1.random_normal_initializer(stddev=0.02)
     self.zero_init = tf.compat.v1.zeros_initializer()
@@ -64,11 +60,8 @@ class MetaDropout(tf.keras.Model):
   # call the main network with/without perturbation
   def call(self, x, theta, phi, sample=False):
     x = tf.reshape(x, [-1, self.xdim, self.xdim, self.input_channel])
-
-    # conventional 4-conv network --> multiplicative noise
     for l in [1,2,3,4]:
       x = conv_block(x, theta['conv%d_w'%l], theta['conv%d_b'%l], phi['conv%d_w'%l], phi['conv%d_b'%l], sample=sample, bn_scope='conv%d_bn'%l, maml=self.maml)
-    # final dense layer --> additive noise
     x = dense_block(x, theta['dense_w'], theta['dense_b'], phi['dense_w'], phi['dense_b'], sample=sample, maml=self.maml)
     return x
 
@@ -94,7 +87,6 @@ class MetaDropout(tf.keras.Model):
             inner_logits = self.call(xtri, theta_clone, phi_clone, sample=True)
             inner_loss = cross_entropy(inner_logits, ytri)
 
-        # compute inner-gradient
         grads = inner_tape.gradient(inner_loss, list(theta_clone.values()))
         gradients = dict(zip(theta_clone.keys(), grads))
         theta_clone = self.metaupdate(theta_clone, gradients)
@@ -105,7 +97,6 @@ class MetaDropout(tf.keras.Model):
 
     return lossi, acci
 
-  # compute the test loss over multiple tasks
   def get_loss_multiple(self, data_episode, optim):
 
     theta = self.theta
